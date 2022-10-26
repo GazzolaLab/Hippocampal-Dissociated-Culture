@@ -23,7 +23,7 @@ module load gcc/10.2.0
 module load openmpi cmake anaconda3 
 
 # Load MiV-Simulator
-SIMULATOR_PATH=/expanse/lustre/projects/uiuc409/skim449/MiV2
+SIMULATOR_PATH=/expanse/lustre/projects/uic409/skim449/MiV2
 module use ${SIMULATOR_PATH}/modules
 module load miv-simulator
 eval "$(conda shell.bash hook)"  # Reset anaconda3 hook

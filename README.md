@@ -15,7 +15,10 @@ MiV-Simulator simulation case for experiment + simulator comparison work.
 - jobscripts: slurm job scripts 
     - Expanse (SDSC)
         1. slurm_build_coords.sh
-        2. slurm_build_conn.sh
+        2. _build connection_
+            - slurm_PYR_synapses.sh
+            - slurm_PVBC_synapses.sh
+            - slurm_OLM_synapses.sh
         3. slurm_aggregate.sh
         4. slurm_run.sh
 

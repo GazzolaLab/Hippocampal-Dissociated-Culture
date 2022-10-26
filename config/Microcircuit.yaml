@@ -6,8 +6,8 @@ Global Parameters: !include Global.yaml
 Geometry: !include Geometry.yaml
 Random Seeds: !include Random.yaml
 Connection Generator: !include Microcircuit_Connections.yaml
-Cell Data: MiV_Cells_Microcircuit_20220410.h5
-Connection Data: MiV_Connections_Microcircuit_20220410.h5
+Cell Data: MiV_Cells_Microcircuit_20221026.h5
+Connection Data: MiV_Connections_Microcircuit_20221026.h5
 Recording: !include Recording.yaml
 Stimulus: !include Input_Configuration.yaml
 Analysis: !include Analysis_Configuration.yaml

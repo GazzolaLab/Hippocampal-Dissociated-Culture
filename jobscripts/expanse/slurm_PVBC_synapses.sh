@@ -41,6 +41,8 @@ CONFIG_PREFIX="config"
 DATASET_PREFIX="datasets"
 MAIN_CONFIG="Microcircuit.yaml"
 
+rm -f ${DATASET_PREFIX}/PVBC_*.h5
+
 # Creating dendritic trees in NeuroH5 format
 echo "Neurotree import"
 neurotrees_import PVBC ${DATASET_PREFIX}/PVBC_tree.h5 morphology/PVBC.swc
@@ -57,6 +59,7 @@ mpirun -np 64 distribute-synapse-locs \
               --template-path templates \
               --config=$MAIN_CONFIG \
               --config-prefix=$CONFIG_PREFIX \
+              --mechanisms-path="mechanisms" \
               --populations PVBC \
               --forest-path=${DATASET_PREFIX}/PVBC_forest.h5 \
               --output-path=${DATASET_PREFIX}/PVBC_forest.h5 \

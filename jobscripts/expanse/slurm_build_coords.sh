@@ -43,8 +43,6 @@ MAIN_CONFIG="Microcircuit.yaml"
 
 rm -rf ${DATASET_PREFIX}
 mkdir -p ${DATASET_PREFIX}
-rm -rf x86_64
-nrnivmodl mechanisms/* .
 
 # Creating H5Types definitions
 make-h5types --config-prefix $CONFIG_PREFIX -c $MAIN_CONFIG --output-path ${DATASET_PREFIX}/MiV_h5types.h5

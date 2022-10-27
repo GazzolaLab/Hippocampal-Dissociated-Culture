@@ -1,13 +1,13 @@
 #!/bin/bash -
 #SBATCH -o OLM_syn.stdout
 #SBATCH -e OLM_syn.stderr
-#SBATCH --ntasks-per-node 64
-#SBATCH --mem=128GB
+#SBATCH --ntasks-per-node 32
+#SBATCH --mem=64GB
 #SBATCH --job-name=OLMsyn
 #SBATCH --nodes=1
 #SBATCH --account=uic409
-#SBATCH --partition compute
-#SBATCH --time 48:00:00
+#SBATCH --partition shared
+#SBATCH --time 24:00:00
 #SBATCH --constraint="lustre"
 
 module purge
@@ -41,6 +41,8 @@ CONFIG_PREFIX="config"
 DATASET_PREFIX="datasets"
 MAIN_CONFIG="Microcircuit.yaml"
 
+rm -f ${DATASET_PREFIX}/OLM_*.h5
+
 # Creating dendritic trees in NeuroH5 format
 echo "Neurotree import"
 neurotrees_import OLM ${DATASET_PREFIX}/OLM_tree.h5 morphology/OLM.swc
@@ -53,10 +55,11 @@ echo "copy tree structure into forest"
 mpirun -np 1 neurotrees_copy --write-size 3000 --fill --output ${DATASET_PREFIX}/OLM_forest.h5 ${DATASET_PREFIX}/OLM_tree.h5 OLM 82474
 
 echo "distribute synpase locations"
-mpirun -np 64 distribute-synapse-locs \
+mpirun -np 32 distribute-synapse-locs \
               --template-path templates \
               --config=$MAIN_CONFIG \
               --config-prefix=$CONFIG_PREFIX \
+              --mechanisms-path="mechanisms" \
               --populations OLM \
               --forest-path=${DATASET_PREFIX}/OLM_forest.h5 \
               --output-path=${DATASET_PREFIX}/OLM_forest.h5 \
@@ -65,7 +68,7 @@ mpirun -np 64 distribute-synapse-locs \
 
 # Generating connections
 echo "generate distance connections"
-mpirun -np 64 generate-distance-connections \
+mpirun -np 32 generate-distance-connections \
     --config=$MAIN_CONFIG \
     --config-prefix=$CONFIG_PREFIX \
     --forest-path=${DATASET_PREFIX}/OLM_forest.h5 \

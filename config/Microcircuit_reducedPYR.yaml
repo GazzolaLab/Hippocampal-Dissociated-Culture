@@ -1,22 +1,20 @@
-## Network clamp configuration for PYR
-Network Clamp:  !include Network_Clamp.yaml
-Model Name: Network_Clamp_PYR
-Dataset Name: Microcircuit_Subset
+## Model configuration of microcircuit network
+Model Name: Microcircuit
+Dataset Name: Microcircuit
 Definitions: !include Definitions.yaml
+Global Parameters: !include Global.yaml
 Geometry: !include Geometry.yaml
 Random Seeds: !include Random.yaml
-Cell Data: Microcircuit_PYR_selection_gid_48041.h5
-Connection Data: Microcircuit_PYR_selection_gid_48041.h5
 Connection Generator: !include Microcircuit_Connections.yaml
+Cell Data: MiV_Cells_Microcircuit_20221026.h5
+Connection Data: MiV_Connections_Microcircuit_20221026.h5
 Recording: !include Recording.yaml
 Stimulus: !include Input_Configuration.yaml
 Analysis: !include Analysis_Configuration.yaml
-
-## Cell types for dentate gyrus model
 Cell Types:
   PYR:
     template: SC_nrn
-    mechanism file: PYR_SoldadoMagranerGfluct.yaml
+    mechanism file: PYR_SoldadoMagraner.yaml
     synapses:
       density: !include PYR_synapse_density.yaml
   OLM:
@@ -32,4 +30,3 @@ Cell Types:
     spike train:
       namespace: Input Spikes
       attribute: Spike Train
-

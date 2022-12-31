@@ -1,4 +1,4 @@
-Synapse Mechanisms:
+     Synapse Mechanisms:
   AMPA: LinExp2Syn
   NMDA: LinExp2SynNMDA
   GABA_A: LinExp2Syn
@@ -10,124 +10,124 @@ Synapses:
   PYR:
     STIM:
       type: excitatory
-      sections: [soma, basal, apical, apical]
-      layers: [SP, SO, SR, SLM]
-      proportions: [0.5, 0.5, 0.5, 0.5]
+      sections: [soma, basal, apical]
+      layers: [SO, SO, SO]
+      proportions: [0.1, 0.1, 0.1]
       mechanisms:
         AMPA:
           tau_rise: 0.5
           tau_decay: 3.0
           e: 0
           g_unit: 0.00001
-          weight: 1.0
+          weight: 0.0
         NMDA:
           g_unit: 0.00001
-          weight: 1.0
+          weight: 0.0
     PYR:
       type: excitatory
-      sections: [soma, basal, apical, apical]
-      layers: [SP, SO, SR, SLM]
-      proportions: [0.5, 0.5, 0.5, 0.5]
+      sections: [soma, basal, apical]
+      layers: [SO, SO, SO]
+      proportions: [0.9, 0.9, 0.9]
       mechanisms:
         AMPA:
           tau_rise: 0.5
           tau_decay: 3.0
           e: 0
           g_unit: 0.00001
-          weight: 1.0
+          weight: 0.5
         NMDA:
           g_unit: 0.00001
-          weight: 1.0
+          weight: 0.5
     PVBC:
       type: inhibitory
-      sections: [soma, basal, apical, ais, ais]
-      layers: [SP, SO, SR, SP, SR]
-      proportions: [1.0, 0.5, 1.0, 1.0, 1.0]
+      sections: [soma, basal, apical, ais]
+      layers: [SO, SO, SO, SO]
+      proportions: [0.5, 0.5, 0.5, 1.0]
       mechanisms:
         GABA_A:
           tau_rise: 0.30
           tau_decay: 6.2
           e: -60
           g_unit: 0.005
-          weight: 1.0
+          weight: 0.005
     OLM:
       type: inhibitory
       sections: [soma, basal, apical]
-      layers: [SO, SO, SLM]
-      proportions: [1.0, 0.5, 1.0]
+      layers: [SO, SO, SO]
+      proportions: [0.5, 0.5, 0.5]
       mechanisms:
         GABA_A:
           tau_rise: 0.50
           tau_decay: 9.0
           e: -60
           g_unit: 0.0033
-          weight: 1.0
+          weight: 0.005
   PVBC:
     PYR:
       type: excitatory
-      sections: [soma, apical, apical, basal]
-      layers: [SP, SLM, SR, SO]
-      proportions: [0.5, 0.5, 0.5, 0.5]
+      sections: [soma, apical, basal]
+      layers: [SO, SO, SO]
+      proportions: [0.5, 0.5, 0.5]
       mechanisms:
         AMPA:
           tau_rise: 0.5
           tau_decay: 3.0
           e: 0
           g_unit: 0.0005
-          weight: 1.0
+          weight: 0.005
     STIM:
       type: excitatory
-      sections: [soma, apical, apical, basal]
-      layers: [SP, SLM, SR, SO]
-      proportions: [0.5, 0.5, 0.5, 0.5]
+      sections: [soma, apical, basal]
+      layers: [SO, SO, SO]
+      proportions: [0.5, 0.5, 0.5]
       mechanisms:
         AMPA:
           tau_rise: 0.5
           tau_decay: 3.0
           e: 0
           g_unit: 0.0002
-          weight: 0.1
+          weight: 0
     PVBC:
       type: inhibitory
-      sections: [soma, apical, apical, basal]
-      layers: [SP, SP, SR, SO]
-      proportions: [1.0, 1.0, 1.0, 1.0]
+      sections: [soma, apical, basal]
+      layers: [SO, SO, SO]
+      proportions: [1.0, 0.5, 1.0]
       mechanisms:
         GABA_A:
           tau_rise: 0.08
           tau_decay: 4.8
           e: -60
           g_unit: 0.001
-          weight: 1.0
+          weight: 0.0
     OLM:
       type: inhibitory
       sections: [apical]
-      layers: [SLM]
-      proportions: [1.0]
+      layers: [SO]
+      proportions: [0.5]
       mechanisms:
         GABA_A:
           tau_rise: 0.08
           tau_decay: 4.8
           e: -60
           g_unit: 0.001
-          weight: 1.0
+          weight: 0.0
   OLM:
     PYR:
       type: excitatory
-      sections: [apical, basal, basal]
-      layers: [SLM, SR, SO]
-      proportions: [1.0, 1.0, 1.0]
+      sections: [apical, basal]
+      layers: [SO, SO]
+      proportions: [1.0, 1.0]
       mechanisms:
         AMPA:
           tau_rise: 0.5
           tau_decay: 3.0
           e: 0
           g_unit: 0.001
-          weight: 1.0
+          weight: 0.01
     PVBC:
       type: inhibitory
       sections: [basal, soma, apical]
-      layers: [SO, SP, SR]
+      layers: [SO, SO, SO]
       proportions: [1.0, 1.0, 1.0]
       mechanisms:
         GABA_A:
@@ -135,4 +135,4 @@ Synapses:
           tau_decay: 4.8
           e: -60
           g_unit: 0.0001
-          weight: 1.0
+          weight: 0.0

@@ -5,8 +5,8 @@ Dataset Name: Microcircuit_Subset
 Definitions: !include Definitions.yaml
 Geometry: !include Geometry.yaml
 Random Seeds: !include Random.yaml
-Cell Data: Microcircuit_PYR_selection_gid_48041.h5
-Connection Data: Microcircuit_PYR_selection_gid_48041.h5
+Cell Data: MiV_Cells_Microcircuit_Small_20220410.h5
+Connection Data: MiV_Connections_Microcircuit_Small_20220410.h5
 Connection Generator: !include Microcircuit_Connections.yaml
 Recording: !include Recording.yaml
 Stimulus: !include Input_Configuration.yaml

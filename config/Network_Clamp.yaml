@@ -28,5 +28,5 @@ Synaptic Optimization:
           baseline: -65.0
           threshold: -30.0
           margin: 4.0
-      firing rate: 5.0
+      firing rate: 10.0
       fraction active: 0.33

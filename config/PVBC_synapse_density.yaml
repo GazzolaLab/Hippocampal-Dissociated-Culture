@@ -4,18 +4,18 @@
 
 apical:
   excitatory:
-    SLM:
+    SO:
       mean: 1.43
       variance: 0.1
-    SR:
+    SO:
       mean: 4.16
       variance: 0.1
 
   inhibitory:
-    SLM:
+    SO:
       mean: 0.27
       variance: 0.1
-    SR:
+    SO:
       mean: 0.16
       variance: 0.1
 basal:
@@ -29,10 +29,10 @@ basal:
       variance: 0.1
 soma:
   inhibitory:
-    default:
+    SO:
       mean: 0.18
       variance: 0.1
   excitatory:
-    default:
+    SO:
       mean: 0.40
       variance: 0.1

@@ -1,13 +1,13 @@
 #!/bin/bash -
 #SBATCH -o sim_run.stdout
 #SBATCH -e sim_run.stderr
-#SBATCH --ntasks-per-node 128
-#SBATCH --mem=128GB
-#SBATCH --job-name=mivsim
-#SBATCH --nodes=1
+#SBATCH --ntasks-per-node 64
+#SBATCH --mem=240GB
+#SBATCH --job-name=mivrun
+#SBATCH --nodes=32
 #SBATCH --account=uic409
 #SBATCH --partition compute
-#SBATCH --time 48:00:00
+#SBATCH --time 1:00:00
 #SBATCH --constraint="lustre"
 
 module purge
@@ -35,7 +35,7 @@ export MIV_RUN_DIR=${SLURM_SUBMIT_DIR}
 cd ${MIV_RUN_DIR}
 
 # RUN
-set -e
+#set -e
 
 CONFIG_PREFIX="config"
 DATASET_PREFIX="datasets"
@@ -45,21 +45,25 @@ RESULT_DIR=results
 rm -rf $RESULT_DIR
 mkdir $RESULT_DIR
 
-mpirun -n 64 run-network \
+export UCX_MEMTYPE_CACHE=n
+mpirun run-network \
     --config-file=${MAIN_CONFIG}  \
     --config-prefix=${CONFIG_PREFIX} \
     --arena-id=A \
     --stimulus-id=Diag \
     --template-paths="templates" \
     --dataset-prefix="./datasets" \
+    --mechanisms-path="mechanisms" \
     --results-path=$RESULT_DIR \
-    --io-size=4 \
-    --tstop=300000 \
+    --io-size=10 \
+    --tstop=3000 \
     --v-init=-75 \
     --results-write-time=60 \
     --stimulus-onset=0.0 \
-    --max-walltime-hours=48 \
+    --max-walltime-hours=1.00 \
     --dt 0.025 \
     --verbose
 
 echo "Simulation Terminated"
+
+sacct --format="CPUTime,MaxRSS"

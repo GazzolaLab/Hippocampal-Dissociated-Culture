@@ -1,13 +1,13 @@
 #!/bin/bash -
 #SBATCH -o PVBC_syn.stdout
 #SBATCH -e PVBC_syn.stderr
-#SBATCH --ntasks-per-node 64
-#SBATCH --mem=128GB
+#SBATCH --ntasks-per-node 32
+#SBATCH --mem=64GB
 #SBATCH --job-name=PVBCsyn
 #SBATCH --nodes=1
 #SBATCH --account=uic409
-#SBATCH --partition compute
-#SBATCH --time 48:00:00
+#SBATCH --partition shared
+#SBATCH --time 12:00:00
 #SBATCH --constraint="lustre"
 
 module purge
@@ -55,7 +55,7 @@ echo "copy tree structure into forest"
 mpirun -np 1 neurotrees_copy --write-size 3000 --fill --output ${DATASET_PREFIX}/PVBC_forest.h5 ${DATASET_PREFIX}/PVBC_tree.h5 PVBC 81000
 
 echo "distribute synpase locations"
-mpirun -np 64 distribute-synapse-locs \
+mpirun distribute-synapse-locs \
               --template-path templates \
               --config=$MAIN_CONFIG \
               --config-prefix=$CONFIG_PREFIX \
@@ -68,7 +68,7 @@ mpirun -np 64 distribute-synapse-locs \
 
 # Generating connections
 echo "generate distance connections"
-mpirun -np 64 generate-distance-connections \
+mpirun generate-distance-connections \
     --config=$MAIN_CONFIG \
     --config-prefix=$CONFIG_PREFIX \
     --forest-path=${DATASET_PREFIX}/PVBC_forest.h5 \
@@ -76,4 +76,4 @@ mpirun -np 64 generate-distance-connections \
     --connectivity-namespace=Connections \
     --coords-path=${DATASET_PREFIX}/Microcircuit_coords.h5 \
     --coords-namespace='Generated Coordinates' \
-    --io-size=1 --cache-size=20 --write-size=100 -v
+    --io-size=1 --cache-size=20 --write-size=50 -v

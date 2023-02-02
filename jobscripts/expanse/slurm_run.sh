@@ -7,7 +7,7 @@
 #SBATCH --nodes=32
 #SBATCH --account=uic409
 #SBATCH --partition compute
-#SBATCH --time 1:00:00
+#SBATCH --time 48:00:00
 #SBATCH --constraint="lustre"
 
 module purge
@@ -55,12 +55,12 @@ mpirun run-network \
     --dataset-prefix="./datasets" \
     --mechanisms-path="mechanisms" \
     --results-path=$RESULT_DIR \
-    --io-size=10 \
+    --io-size=20 \
     --tstop=3000 \
     --v-init=-75 \
     --results-write-time=60 \
     --stimulus-onset=0.0 \
-    --max-walltime-hours=1.00 \
+    --max-walltime-hours=48.00 \
     --dt 0.025 \
     --verbose
 

@@ -2,12 +2,12 @@
 #SBATCH -o PYR_syn.stdout
 #SBATCH -e PYR_syn.stderr
 #SBATCH --ntasks-per-node 64
-#SBATCH --mem=128GB
+#SBATCH --mem=240GB
 #SBATCH --job-name=PYRsyn
-#SBATCH --nodes=1
+#SBATCH --nodes=8
 #SBATCH --account=uic409
 #SBATCH --partition compute
-#SBATCH --time 24:00:00
+#SBATCH --time 48:00:00
 #SBATCH --constraint="lustre"
 
 module purge
@@ -55,7 +55,7 @@ echo "copy tree structure into forest"
 mpirun -np 1 neurotrees_copy --write-size 3000 --fill --output ${DATASET_PREFIX}/PYR_forest.h5 ${DATASET_PREFIX}/PYR_tree.h5 PYR 1000
 
 echo "distribute synpase locations"
-mpirun -np 64 distribute-synapse-locs \
+mpirun distribute-synapse-locs \
               --template-path templates \
               --config=$MAIN_CONFIG \
               --config-prefix=$CONFIG_PREFIX \
@@ -69,7 +69,7 @@ mpirun -np 64 distribute-synapse-locs \
 
 # Generating connections
 echo "generate distance connections"
-mpirun -np 64 generate-distance-connections \
+mpirun generate-distance-connections \
     --config=$MAIN_CONFIG \
     --config-prefix=$CONFIG_PREFIX \
     --forest-path=${DATASET_PREFIX}/PYR_forest.h5 \
@@ -77,4 +77,4 @@ mpirun -np 64 generate-distance-connections \
     --connectivity-namespace=Connections \
     --coords-path=${DATASET_PREFIX}/Microcircuit_coords.h5 \
     --coords-namespace='Generated Coordinates' \
-    --io-size=20 --cache-size=20 --write-size=100 -v
+    --io-size=20 --cache-size=20 --write-size=10 -v

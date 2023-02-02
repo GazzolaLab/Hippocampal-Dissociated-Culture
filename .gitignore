@@ -17,6 +17,8 @@ results
 *.stderr
 *.stdout
 
+core.*
+
 # Distribution / packaging
 .Python
 build/

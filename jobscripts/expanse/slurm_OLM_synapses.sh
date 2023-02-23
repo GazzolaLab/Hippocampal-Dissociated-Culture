@@ -55,7 +55,7 @@ echo "copy tree structure into forest"
 mpirun -np 1 neurotrees_copy --write-size 3000 --fill --output ${DATASET_PREFIX}/OLM_forest.h5 ${DATASET_PREFIX}/OLM_tree.h5 OLM 82474
 
 echo "distribute synpase locations"
-mpirun -np 32 distribute-synapse-locs \
+mpirun distribute-synapse-locs \
               --template-path templates \
               --config=$MAIN_CONFIG \
               --config-prefix=$CONFIG_PREFIX \
@@ -68,7 +68,7 @@ mpirun -np 32 distribute-synapse-locs \
 
 # Generating connections
 echo "generate distance connections"
-mpirun -np 32 generate-distance-connections \
+mpirun generate-distance-connections \
     --config=$MAIN_CONFIG \
     --config-prefix=$CONFIG_PREFIX \
     --forest-path=${DATASET_PREFIX}/OLM_forest.h5 \
@@ -76,4 +76,4 @@ mpirun -np 32 generate-distance-connections \
     --connectivity-namespace=Connections \
     --coords-path=${DATASET_PREFIX}/Microcircuit_coords.h5 \
     --coords-namespace='Generated Coordinates' \
-    --io-size=1 --cache-size=20 --write-size=100 -v
+    --io-size=1 --cache-size=20 --write-size=50 -v

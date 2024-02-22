@@ -26,6 +26,10 @@ Cell Types:
     template: PVBasketCell
     synapses:
       density: !include PVBC_synapse_density.yaml
+  CCKBC:
+    template: CCKBasketCell
+    synapses:
+      density: !include CCKBC_synapse_density.yaml
   STIM:
     template: VecStim
     spike train:

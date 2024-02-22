@@ -15,8 +15,7 @@ Analysis: !include Analysis_Configuration.yaml
 ## Cell types for dentate gyrus model
 Cell Types:
   PYR:
-    template: SC_nrn
-    mechanism file: PYR_SoldadoMagranerGfluct.yaml
+    template: PoolosPyramidalCell
     synapses:
       density: !include PYR_synapse_density.yaml
   OLM:

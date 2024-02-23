@@ -32,6 +32,7 @@ Populations:
   STIM: 0
   PYR:  100
   PVBC:  101
+  CCKBC: 103
   OLM:  102
 Input Selectivity Types:
   random: 0

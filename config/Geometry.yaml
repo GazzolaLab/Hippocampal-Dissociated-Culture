@@ -17,6 +17,8 @@ Cell Constraints:
     SP: [100., 120.] # Lee, ..., Soltesz. Neuron 2014
   PVBC:
     SR: [150., 200.0] # Booker, Vida. Cell & Tissue Research 2018
+  CCKBC:
+    SLM: [350.0, 370.0] # Vida, ..., Buhl. J. Physiology 1998
 Cell Distribution:
   STIM:
     SO:  0
@@ -33,6 +35,11 @@ Cell Distribution:
     SP:  1034
     SR:  88
     SLM: 0
+  CCKBC: # 3600
+    SO:  208
+    SP:  250
+    SR:  312
+    SLM: 236
   OLM: #1640
     SO:  438
     SP:  0

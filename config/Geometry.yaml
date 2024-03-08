@@ -1,6 +1,3 @@
-# 80000 neurons
-# 200 um electrode spacing
-# 30 um electrode size
 Parametric Surface:
   Origin:
     U: median
@@ -13,35 +10,81 @@ Parametric Surface:
     SLM: [[0.0, 0.0,350.0], [4000.0, 4000.0, 450.0]]
   Rotation: [0.0, 0.0, 0.0]
 Cell Constraints:
-  PC:
-    SP: [100., 120.] # Lee, ..., Soltesz. Neuron 2014
+  PYR:
+    SP: [100., 150.] # Lee, ..., Soltesz. Neuron 2014
   PVBC:
     SR: [150., 200.0] # Booker, Vida. Cell & Tissue Research 2018
   CCKBC:
     SLM: [350.0, 370.0] # Vida, ..., Buhl. J. Physiology 1998
+  PVBC:
+    SR: [150., 200.0] # Booker, Vida. Cell & Tissue Research 2018
+  AAC:
+    SO: [80.0, 100.0] # Baude, ..., Klausberger Cerebral Cortex 2007 
+  SCA:
+    SR: [330.0, 350.0] # Vida, ..., Buhl. J. Physiology 1998
 Cell Distribution:
-  STIM:
-    SO:  0
-    SP:  1000
-    SR:  0
-    SLM: 0
   PYR:
     SO:  0
-    SP:  80000
+    SP:  311500
     SR:  0
     SLM: 0
   PVBC: #5530
-    SO:  352
-    SP:  1034
-    SR:  88
+    SO:  1320
+    SP:  3880
+    SR:  330
+    SLM: 0
+  AAC: #1380
+    SO:  350
+    SP:  1030
+    SR:  0
+    SLM: 0
+  BS:  #2210
+    SO:  530
+    SP:  1550 
+    SR:  130
     SLM: 0
   CCKBC: # 3600
-    SO:  208
-    SP:  250
-    SR:  312
-    SLM: 236
+    SO:  780
+    SP:  940
+    SR:  1170
+    SLM: 710
+  IVY: # 8810
+    SO:  980
+    SP:  5410
+    SR:  2420
+    SLM: 0
+  NGFC: #3580
+    SO:  0
+    SP:  0
+    SR:  610
+    SLM: 2970
   OLM: #1640
-    SO:  438
+    SO:  1640
     SP:  0
     SR:  0
     SLM: 0
+  SCA: #400
+    SO:  0
+    SP:  0
+    SR:  400
+    SLM: 0
+  IS: #5500
+    SO:  780
+    SP:  2710
+    SR:  1000
+    SLM: 1010
+  CA3:
+    SO:  0
+    SP:  0
+    SR:  204700
+    SLM: 0
+  CA2:
+    SO:  40000
+    SP:  0
+    SR:  0
+    SLM: 0
+  EC:
+    SO:  0
+    SP:  0
+    SR:  0
+    SLM: 250000

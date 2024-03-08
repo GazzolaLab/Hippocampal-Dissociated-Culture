@@ -1,0 +1,63 @@
+## Model configuration of microcircuit network
+Model Name: CA1_Full_Scale
+Dataset Name: CA1_Full_Scale
+Definitions: !include Definitions.yaml
+Global Parameters: !include Global.yaml
+Geometry: !include Geometry.yaml
+Random Seeds: !include Random.yaml
+Connection Generator: !include Full_Scale_Connections.yaml
+Cell Data: CA1_Cells_Full_Scale_20221026.h5
+Connection Data: CA1_Connections_Full_Scale_20221026.h5
+Recording: !include Recording.yaml
+Stimulus: !include Input_Configuration.yaml
+Analysis: !include Analysis_Configuration.yaml
+Cell Types:
+  PYR:
+#    template: PoolosPyramidalCell  # SC_nrn
+#    mechanism file: PYR_SoldadoMagraner.yaml
+    template: PoolosPyramidalCell
+    synapses:
+      density: !include PYR_synapse_density.yaml
+  PVBC:
+    template: PVBasketCell
+    synapses:
+      density: !include PVBC_synapse_density.yaml
+  CCKBC:
+    template: CCKBasketCell
+    synapses:
+      density: !include CCKBC_synapse_density.yaml
+  IS:
+    template: ISCell
+    synapses:
+      density: !include IS_synapse_density.yaml
+  IVY:
+    template: IvyCell
+    synapses:
+      density: !include IVY_synapse_density.yaml
+  NGFC:
+    template: NGFCell
+    synapses:
+      density: !include NGFC_synapse_density.yaml
+  OLM:
+    template: OLMCell
+    synapses:
+      density: !include OLM_synapse_density.yaml
+  SCA:
+    template: SCACell
+    synapses:
+      density: !include SCA_synapse_density.yaml
+  EC:
+    template: VecStim
+    spike train:
+      namespace: Input Spikes
+      attribute: Spike Train
+  CA2:
+    template: VecStim
+    spike train:
+      namespace: Input Spikes
+      attribute: Spike Train
+  CA3:
+    template: VecStim
+    spike train:
+      namespace: Input Spikes
+      attribute: Spike Train

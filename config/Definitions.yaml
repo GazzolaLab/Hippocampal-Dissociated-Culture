@@ -29,11 +29,19 @@ Layers:
   SR:    8  ## Radiatum
   SLM:   9  ## Lacunosum-moleculare
 Populations:
-  STIM: 0
-  PYR:  100
+  PYR:   100
   PVBC:  101
-  CCKBC: 103
-  OLM:  102
+  AAC:   103
+  BS:    104
+  CCKBC: 105
+  IVY:   106
+  NGFC:  107
+  OLM:   108
+  SCA:   109
+  IS:    110
+  CA3:   111
+  CA2:   112
+  EC:    113
 Input Selectivity Types:
   random: 0
   constant: 1

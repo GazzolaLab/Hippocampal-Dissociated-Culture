@@ -889,7 +889,7 @@ Synapses:
           tau_rise: 0.287
           tau_decay: 2.67
           e: -60
-          g_unit: 
+          g_unit: 0.001
     IVY:
       type: inhibitory
       sections: [apical]
@@ -900,7 +900,7 @@ Synapses:
           tau_rise: 2.9
           tau_decay: 3.1
           e: -60
-          g_unit: 
+          g_unit: 0.001
     SCA:
       type: inhibitory
       sections: [apical]
@@ -911,7 +911,7 @@ Synapses:
           tau_rise: 0.419
           tau_decay: 4.99
           e: -60
-          g_unit: 
+          g_unit:  0.001
     NGFC: 
       type: inhibitory
       sections: [apical]
@@ -974,7 +974,7 @@ Synapses:
           tau_rise: 2.0
           tau_decay: 6.3
           e: 0
-          g_unit:      
+          g_unit: 0.001
     PYR:
       type: excitatory
       sections: [basal]
@@ -998,7 +998,7 @@ Synapses:
           tau_rise: 0.287
           tau_decay: 2.67
           e: -60
-          g_unit:
+          g_unit: 0.001
     CCKBC:  
       type: inhibitory
       sections: [soma, apical, basal]
@@ -1143,7 +1143,7 @@ Synapses:
           tau_rise: 0.432
           tau_decay: 4.9
           e: -60
-          g_unit: 
+          g_unit: 0.001
     BS:   
       type: inhibitory
       sections: [apical]
@@ -1154,7 +1154,7 @@ Synapses:
           tau_rise: 0.287
           tau_decay: 2.67
           e: -60
-          g_unit: 
+          g_unit: 0.001
     IVY:
       type: inhibitory
       sections: [apical]
@@ -1165,7 +1165,7 @@ Synapses:
           tau_rise: 2.9
           tau_decay: 3.1
           e: -60
-          g_unit: 
+          g_unit: 0.001
     SCA:
       type: inhibitory
       sections: [apical]
@@ -1176,7 +1176,7 @@ Synapses:
           tau_rise: 0.419
           tau_decay: 4.99
           e: -60
-          g_unit: 
+          g_unit: 0.001
     IS: 
       type: inhibitory
       sections: [apical]

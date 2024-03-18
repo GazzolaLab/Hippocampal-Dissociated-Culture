@@ -68,11 +68,21 @@ Cell Distribution:
     SP:  0
     SR:  400
     SLM: 0
-  IS: #5500
+  IS1: #4250
     SO:  780
-    SP:  2710
-    SR:  1000
-    SLM: 1010
+    SP:  1800
+    SR:  780
+    SLM: 890
+  IS2: #1970
+    SO:  0
+    SP:  480
+    SR:  450
+    SLM: 890
+  IS3: #1250
+    SO:  0
+    SP:  910
+    SR:  220
+    SLM: 120
   CA3:
     SO:  0
     SP:  0

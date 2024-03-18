@@ -7,16 +7,15 @@
 // Optimized using HippoUnit (Saray et al., 2020)
 
 begintemplate TomkoPyramidalCell
-public is_art
+public is_art, is_reduced
 public init, topol, basic_shape, subsets, geom, biophys
 
 public soma, radTprox1, radTprox2, radTmed1, radTmed2, radTdist1, radTdist2, lm_thick2, lm_medium2, lm_thin2, axon
 public lm_thick1, lm_medium1, lm_thin1, oriprox1, oridist1_1, oridist1_2, oriprox2, oridist2_1, oridist2_2
 public rad_t1, rad_t2, rad_t3
 
-public all, somatic, apical, basal, axonal, oblique_sec_list, trunk_sec_list
-objref all, somatic, apical, basal, axonal, oblique_sec_list, trunk_sec_list
-objref this, CellRef
+public all, soma_list, apical_list, basal_list, axon_list, oblique_list, trunk_list
+objref all, soma_list, apical_list, basal_list, axon_list, oblique_list, trunk_list
 
 create soma[1], radTprox1, radTprox2, radTmed1, radTmed2, radTdist1, radTdist2, lm_thick2, lm_medium2, lm_thin2, axon
 create rad_t1, rad_t2, rad_t3
@@ -117,55 +116,55 @@ proc subsets() {
   oridist2_2 all.append()
   axon all.append()
 
-  apical = new SectionList()
-  radTprox1 apical.append()
-  radTprox2 apical.append()
-  radTmed1 apical.append()
-  radTmed2 apical.append()
-  radTdist1 apical.append()
-  radTdist2 apical.append()
-  rad_t1 apical.append()
-  rad_t2 apical.append()
-  rad_t3 apical.append()
-  lm_thick2 apical.append()
-  lm_medium2 apical.append()
-  lm_thin2 apical.append()
-  lm_thick1 apical.append()
-  lm_medium1 apical.append()
-  lm_thin1 apical.append()
+  apical_list = new SectionList()
+  radTprox1 apical_list.append()
+  radTprox2 apical_list.append()
+  radTmed1 apical_list.append()
+  radTmed2 apical_list.append()
+  radTdist1 apical_list.append()
+  radTdist2 apical_list.append()
+  rad_t1 apical_list.append()
+  rad_t2 apical_list.append()
+  rad_t3 apical_list.append()
+  lm_thick2 apical_list.append()
+  lm_medium2 apical_list.append()
+  lm_thin2 apical_list.append()
+  lm_thick1 apical_list.append()
+  lm_medium1 apical_list.append()
+  lm_thin1 apical_list.append()
 
-  basal = new SectionList()
-  oriprox1 basal.append()
-  oridist1_1 basal.append()
-  oridist1_2 basal.append()
-  oriprox2 basal.append()
-  oridist2_1 basal.append()
-  oridist2_2 basal.append()
+  basal_list = new SectionList()
+  oriprox1 basal_list.append()
+  oridist1_1 basal_list.append()
+  oridist1_2 basal_list.append()
+  oriprox2 basal_list.append()
+  oridist2_1 basal_list.append()
+  oridist2_2 basal_list.append()
 
-  somatic = new SectionList()
-  soma somatic.append()
+  soma_list = new SectionList()
+  soma soma_list.append()
 
-  axonal = new SectionList()
-  axon axonal.append()
+  axon_list = new SectionList()
+  axon axon_list.append()
 
-  trunk_sec_list = new SectionList()
-  radTprox1 trunk_sec_list.append()
-  radTprox2 trunk_sec_list.append()
-  radTmed1 trunk_sec_list.append()
-  radTmed2 trunk_sec_list.append()
-  radTdist1 trunk_sec_list.append()
-  radTdist2 trunk_sec_list.append()
+  trunk_list = new SectionList()
+  radTprox1 trunk_list.append()
+  radTprox2 trunk_list.append()
+  radTmed1 trunk_list.append()
+  radTmed2 trunk_list.append()
+  radTdist1 trunk_list.append()
+  radTdist2 trunk_list.append()
 
-  oblique_sec_list = new SectionList()
-  rad_t1 oblique_sec_list.append()
-  rad_t2 oblique_sec_list.append()
-  rad_t3 oblique_sec_list.append()
+  oblique_list = new SectionList()
+  rad_t1 oblique_list.append()
+  rad_t2 oblique_list.append()
+  rad_t3 oblique_list.append()
 }
 
 proc geom() {
   soma {  L = 10  diam = 10  }
 
-  // SR is first 500um of apical dendrite
+  // SR is first 500um of apical_list dendrite
   radTprox1 {  L = 50  diam = 4  }
   radTprox2 {  L = 50  diam = 4  }
   radTmed1 {  L = 50  diam = 3  }
@@ -178,7 +177,7 @@ proc geom() {
   rad_t2 {  L = 150  diam = 1  }
   rad_t3 {  L = 150  diam = 1  }
 
-  // OLM is final 300um of apical dendrite
+  // OLM is final 300um of apical_list dendrite
   lm_thick2 {  L = 100  diam = 2  }
   lm_medium2 {  L = 100  diam = 1.5  }
   lm_thin2 {  L = 50  diam = 1  }
@@ -186,7 +185,7 @@ proc geom() {
   lm_medium1 {  L = 100  diam = 1.5  }
   lm_thin1 {  L = 50  diam = 1  }
 
-  // Basal dendrites extend 300 um
+  // Basal_List dendrites extend 300 um
   oriprox1 {  L = 100  diam = 2  }
   oridist1_1 {  L = 200  diam = 1.5  }
   oridist1_2 {  L = 200  diam = 1.5  }
@@ -226,7 +225,7 @@ proc insertChannel() {
         insert nax
     }
 
-    forsec somatic {
+    forsec soma_list {
         insert kmb
         insert kap
         insert hd
@@ -238,7 +237,7 @@ proc insertChannel() {
         insert cacum
     }
 
-    forsec apical {
+    forsec apical_list {
         insert kad
         insert hd
         insert can
@@ -249,7 +248,7 @@ proc insertChannel() {
         insert cacum
     }
 
-    forsec basal {
+    forsec basal_list {
         insert kad
         insert hd
         insert can
@@ -260,7 +259,7 @@ proc insertChannel() {
         insert cacum
     }
 
-    forsec this.axonal {
+    forsec axon_list {
         insert kmb
         insert kap
     }
@@ -278,7 +277,7 @@ proc biophys() {
     }
 
     // opt for depolarization block
-    forsec somatic {
+    forsec soma_list {
         gkabar_kap = 0.0075
         gbar_kmb = 0.001
         gkdrbar_kdr = 0.0015
@@ -292,7 +291,7 @@ proc biophys() {
         g_pas = 9.031387191839301e-05
     }
 
-    forsec axonal {
+    forsec axon_list {
         gbar_nax = 0.035
         gkdrbar_kdr = 0.011664045469379856
         gbar_kmb = 0.026473888790212396
@@ -302,7 +301,7 @@ proc biophys() {
         e_pas = -79.917091935442244
     }
 
-    forsec apical {
+    forsec apical_list {
         gkdrbar_kdr = 0.0043036502438625682
         gbar_nax = 0.038280628170345957
         gcalbar_cal = 8.0324964335287e-06
@@ -315,7 +314,7 @@ proc biophys() {
     }
 
     //opt for backpropagation
-    forsec trunk_sec_list {
+    forsec trunk_list {
         gkdrbar_kdr = 0.02
         gbar_nax = 0.025
         gcalbar_cal = 8.0324964335287e-06
@@ -327,7 +326,7 @@ proc biophys() {
         g_pas = 9.031387191839301e-05
     }
 
-    forsec basal {
+    forsec basal_list {
         gkdrbar_kdr = 0.0043036502438625682
         gbar_nax = 0.038280628170345957
         gcalbar_cal = 8.0324964335287e-06
@@ -339,14 +338,14 @@ proc biophys() {
         g_pas = 9.031387191839301e-05
     }
 
-    distribute_distance(apical, "ghdbar_hd", "(1. + 3./100. * %.17g)*1.9042409723832741e-05")
-    distribute_distance(apical, "e_pas", "(-65.726902768520958-5*%.17g/150)")
-    distribute_distance(apical, "gkabar_kad", "(15./(1. + exp((300-%.17g)/50)))* 0.012921529390557651 ")
-    distribute_distance(basal, "ghdbar_hd", "(1. + 3./100. * %.17g)*1.9042409723832741e-05")
-    distribute_distance(basal, "e_pas", "(-65.726902768520958-5*%.17g/150)")
-    distribute_distance(basal, "gkabar_kad", "(15./(1. + exp((300-%.17g)/50)))*0.012921529390557651")
-    distribute_distance(somatic, "ghdbar_hd", "(1. + 3./100. * %.17g)*1.9042409723832741e-05")
-    distribute_distance(somatic, "e_pas", "(-65.726902768520958-5*%.17g/150)")
+    distribute_distance(apical_list, "ghdbar_hd", "(1. + 3./100. * %.17g)*1.9042409723832741e-05")
+    distribute_distance(apical_list, "e_pas", "(-65.726902768520958-5*%.17g/150)")
+    distribute_distance(apical_list, "gkabar_kad", "(15./(1. + exp((300-%.17g)/50)))* 0.012921529390557651 ")
+    distribute_distance(basal_list, "ghdbar_hd", "(1. + 3./100. * %.17g)*1.9042409723832741e-05")
+    distribute_distance(basal_list, "e_pas", "(-65.726902768520958-5*%.17g/150)")
+    distribute_distance(basal_list, "gkabar_kad", "(15./(1. + exp((300-%.17g)/50)))*0.012921529390557651")
+    distribute_distance(soma_list, "ghdbar_hd", "(1. + 3./100. * %.17g)*1.9042409723832741e-05")
+    distribute_distance(soma_list, "e_pas", "(-65.726902768520958-5*%.17g/150)")
 
     radTprox1 {gkabar_kad = 0.1}
     radTprox2 {gkabar_kad = 0.1}
@@ -363,5 +362,6 @@ proc biophys() {
 
 
 func is_art() { return 0 }
+func is_reduced() { return 1 }
 
 endtemplate CA1_PC_Tomko

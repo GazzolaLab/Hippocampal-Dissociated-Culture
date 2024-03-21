@@ -843,7 +843,7 @@ Synapses:
       type: inhibitory
       sections: [apical]
       layers: [SR]
-      proportions: [0.45]
+      proportions: [0.40]
       mechanisms:
         GABA_A:
           tau_rise: 2.9
@@ -1052,7 +1052,7 @@ Synapses:
       type: inhibitory
       sections: [soma, basal]
       layers: [SP, SO]
-      proportions: [0.24, 0.4]
+      proportions: [0.24, 0.3]
       mechanisms:
         GABA_A:
           tau_rise: 0.287
@@ -1063,7 +1063,7 @@ Synapses:
       type: inhibitory
       sections: [soma, apical, basal]
       layers: [SP, SP, SO]
-      proportions: [0.76, 1.0, 0.3]
+      proportions: [0.76, 1.0, 0.2]
       mechanisms:
         GABA_A:
           tau_rise: 0.432
@@ -1085,7 +1085,7 @@ Synapses:
       type: inhibitory
       sections: [apical]
       layers: [SR]
-      proportions: [0.79]
+      proportions: [0.19]
       mechanisms:
         GABA_A:
           tau_rise: 2.9
@@ -1150,7 +1150,7 @@ Synapses:
       type: inhibitory
       sections: [apical]
       layers: [SR]
-      proportions: [0.3, 0.3]
+      proportions: [0.3]
       swctype mechanisms:
         apical:
           GABA_A:
@@ -1162,7 +1162,7 @@ Synapses:
       type: inhibitory
       sections: [basal]
       layers: [SO]
-      proportions: [0.3]
+      proportions: [0.2]
       swctype mechanisms:
         apical:
           GABA_A:
@@ -1358,7 +1358,7 @@ Synapses:
       type: excitatory
       sections: [basal]
       layers: [SO]
-      proportions: [0.7]
+      proportions: [0.8]
       mechanisms:
         AMPA:
           tau_rise: 0.1
@@ -1404,7 +1404,7 @@ Synapses:
       type: inhibitory
       sections: [apical]
       layers: [SR]
-      proportions: [0.65]
+      proportions: [0.35]
       mechanisms:
         GABA_A:
           tau_rise: 2.9
@@ -1437,7 +1437,7 @@ Synapses:
       type: inhibitory
       sections: [apical]
       layers: [SR]
-      proportions: [1.0]
+      proportions: [0.25]
       swctype mechanisms:
         apical:
           GABA_A:
@@ -1449,7 +1449,7 @@ Synapses:
       type: inhibitory
       sections: [apical]
       layers: [SR]
-      proportions: [1.0]
+      proportions: [0.15]
       swctype mechanisms:
         apical:
           GABA_A:

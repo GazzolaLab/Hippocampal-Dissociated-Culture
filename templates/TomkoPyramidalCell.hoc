@@ -17,6 +17,9 @@ public rad_t1, rad_t2, rad_t3
 public all, soma_list, apical_list, basal_list, axon_list, oblique_list, trunk_list
 objref all, soma_list, apical_list, basal_list, axon_list, oblique_list, trunk_list
 
+public soma_SP_list, apical_SR_list, apical_SLM_list, basal_SO_list, axon_SO_list, ais_SR_list, ais_SP_list
+objref soma_SP_list, apical_SR_list, apical_SLM_list, basal_SO_list, axon_SO_list, ais_SR_list, ais_SP_list
+
 create soma[1], radTprox1, radTprox2, radTmed1, radTmed2, radTdist1, radTdist2, lm_thick2, lm_medium2, lm_thin2, axon
 create rad_t1, rad_t2, rad_t3
 create lm_thick1, lm_medium1, lm_thin1, oriprox1, oridist1_1, oridist1_2, oriprox2, oridist2_1, oridist2_2
@@ -116,6 +119,7 @@ proc subsets() {
   oridist2_2 all.append()
   axon all.append()
 
+
   apical_list = new SectionList()
   radTprox1 apical_list.append()
   radTprox2 apical_list.append()
@@ -132,6 +136,26 @@ proc subsets() {
   lm_thick1 apical_list.append()
   lm_medium1 apical_list.append()
   lm_thin1 apical_list.append()
+  
+  apical_SR_list = new SectionList()
+  radTprox1 apical_SR_list.append()
+  radTprox2 apical_SR_list.append()
+  radTmed1 apical_SR_list.append()
+  radTmed2 apical_SR_list.append()
+  radTdist1 apical_SR_list.append()
+  radTdist2 apical_SR_list.append()
+  rad_t1 apical_SR_list.append()
+  rad_t2 apical_SR_list.append()
+  rad_t3 apical_SR_list.append()
+  
+
+  apical_SLM_list = new SectionList()
+  lm_thick2 apical_SLM_list.append()
+  lm_medium2 apical_SLM_list.append()
+  lm_thin2 apical_SLM_list.append()
+  lm_thick1 apical_SLM_list.append()
+  lm_medium1 apical_SLM_list.append()
+  lm_thin1 apical_SLM_list.append()
 
   basal_list = new SectionList()
   oriprox1 basal_list.append()
@@ -141,11 +165,28 @@ proc subsets() {
   oridist2_1 basal_list.append()
   oridist2_2 basal_list.append()
 
+  basal_SO_list = new SectionList()
+  oriprox1 basal_SO_list.append()
+  oridist1_1 basal_SO_list.append()
+  oridist1_2 basal_SO_list.append()
+  oriprox2 basal_SO_list.append()
+  oridist2_1 basal_SO_list.append()
+  oridist2_2 basal_SO_list.append()
+
   soma_list = new SectionList()
   soma soma_list.append()
+  soma_SP_list = new SectionList()
+  soma soma_SP_list.append()
 
   axon_list = new SectionList()
   axon axon_list.append()
+
+  axon_SO_list = new SectionList()
+  axon axon_SO_list.append()
+  ais_SR_list = new SectionList()
+  axon ais_SR_list.append()
+  ais_SP_list = new SectionList()
+  axon ais_SP_list.append()
 
   trunk_list = new SectionList()
   radTprox1 trunk_list.append()
@@ -164,7 +205,7 @@ proc subsets() {
 proc geom() {
   soma {  L = 10  diam = 10  }
 
-  // SR is first 500um of apical_list dendrite
+  // SR is first 500um of apical dendrite
   radTprox1 {  L = 50  diam = 4  }
   radTprox2 {  L = 50  diam = 4  }
   radTmed1 {  L = 50  diam = 3  }
@@ -177,7 +218,7 @@ proc geom() {
   rad_t2 {  L = 150  diam = 1  }
   rad_t3 {  L = 150  diam = 1  }
 
-  // OLM is final 300um of apical_list dendrite
+  // OLM is final 300um of apical dendrite
   lm_thick2 {  L = 100  diam = 2  }
   lm_medium2 {  L = 100  diam = 1.5  }
   lm_thin2 {  L = 50  diam = 1  }
@@ -364,4 +405,5 @@ proc biophys() {
 func is_art() { return 0 }
 func is_reduced() { return 1 }
 
-endtemplate CA1_PC_Tomko
+endtemplate TomkoPyramidalCell
+

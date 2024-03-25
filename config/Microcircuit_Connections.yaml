@@ -163,7 +163,7 @@ Synapses:
       type: excitatory
       sections: [apical, apical, basal, soma]
       layers: [SR, SLM, SO, SP]
-      proportions: [1.0, 1.0, 1.0, 1.0]
+      proportions: [1.0, 1.0, 0.65, 1.0]
       mechanisms:
         AMPA:
           tau_rise: 0.5

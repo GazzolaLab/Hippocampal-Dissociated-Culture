@@ -44,7 +44,6 @@ Populations:
   CA3:   111
   CA2:   112
   EC:    113
-  STIM:  200
 Input Selectivity Types:
   random: 0
   constant: 1

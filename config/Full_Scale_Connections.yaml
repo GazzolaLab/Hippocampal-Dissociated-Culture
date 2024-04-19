@@ -1005,7 +1005,7 @@ Synapses:
     CA2:
       type: excitatory
       sections: [apical, basal]
-      layers: [SR, SO]
+      layers: [SR, SR]
       proportions: [0.2, 0.1]
       mechanisms:
         AMPA:
@@ -1016,7 +1016,7 @@ Synapses:
     CA3:
       type: excitatory
       sections: [apical, basal, soma]
-      layers: [SR, SO, SP]
+      layers: [SR, SR, SR]
       proportions: [0.8, 0.2, 1.0]
       mechanisms:
         AMPA:
@@ -1038,7 +1038,7 @@ Synapses:
     PYR:
       type: excitatory
       sections: [basal]
-      layers: [SO]
+      layers: [SR]
       proportions: [0.7]
       mechanisms:
         AMPA:
@@ -1051,7 +1051,7 @@ Synapses:
     PVBC:   
       type: inhibitory
       sections: [soma, basal]
-      layers: [SP, SO]
+      layers: [SR, SR]
       proportions: [0.24, 0.3]
       mechanisms:
         GABA_A:
@@ -1061,9 +1061,9 @@ Synapses:
           g_unit: 0.001
     CCKBC:  
       type: inhibitory
-      sections: [soma, apical, basal]
-      layers: [SP, SP, SO]
-      proportions: [0.76, 1.0, 0.2]
+      sections: [soma, basal]
+      layers: [SR, SR]
+      proportions: [0.76, 0.4]
       mechanisms:
         GABA_A:
           tau_rise: 0.432
@@ -1137,7 +1137,7 @@ Synapses:
     IS1: 
       type: inhibitory
       sections: [basal, apical]
-      layers: [SO, SR]
+      layers: [SR, SR]
       proportions: [0.3, 0.3]
       swctype mechanisms:
         apical:
@@ -1151,18 +1151,6 @@ Synapses:
       sections: [apical]
       layers: [SR]
       proportions: [0.3]
-      swctype mechanisms:
-        apical:
-          GABA_A:
-            tau_rise:  1.1
-            tau_decay: 
-            e:   -60
-            g_unit: 0.001
-    IS3: 
-      type: inhibitory
-      sections: [basal]
-      layers: [SO]
-      proportions: [0.2]
       swctype mechanisms:
         apical:
           GABA_A:

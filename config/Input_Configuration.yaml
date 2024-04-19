@@ -61,13 +61,13 @@ Arena:
       vertices: [[-32.5, -32.5], [-32.5, 32.5], [32.5, 32.5], [32.5, -32.5]]
       simplices: [[0,1], [1,2], [2,3], [3,0]]
 
-Opsin:
-  nstates: 6
-  opsin type: "ChR2"
-  rho parameters:
-    expProb: 1.0
-  protocol: step
-  protocol parameters:
-    Dt_delay: 150
-    phis: [1e15, 1e15]
-    cycles: [[ 10,  150], [ 10,  150], [ 10,  150], [ 10,  150], [ 10,  150], [ 10,  150],  [ 10,  150],  [ 10,  150],  [  10, 100]]
+# Opsin:
+#   nstates: 6
+#   opsin type: "ChR2"
+#   rho parameters:
+#     expProb: 1.0
+#   protocol: step
+#   protocol parameters:
+#     Dt_delay: 150
+#     phis: [1e15, 1e15]
+#     cycles: [[ 10,  150], [ 10,  150], [ 10,  150], [ 10,  150], [ 10,  150], [ 10,  150],  [ 10,  150],  [ 10,  150],  [  10, 100]]

@@ -6,11 +6,17 @@
 
 apical:
   excitatory:
-    SO:
+    SR:
+      mean: 0.55
+      variance: 0.1
+    SLM:
       mean: 0.55
       variance: 0.1
   inhibitory:
-    SO:
+    SR:
+      mean: 0.38
+      variance: 0.1
+    SLM:
       mean: 0.38
       variance: 0.1
       

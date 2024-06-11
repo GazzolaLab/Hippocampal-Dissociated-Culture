@@ -385,4 +385,16 @@ proc get_root() {local i localobj sref
 		print "WARNING: cell ", gid, " has ", i, " root sections!"
 	}
 }
+
+
+obfunc connect2target() { localobj nc // $o1 target point process, optional $o2 returned NetCon
+    forsec soma_list {
+        nc = new NetCon(&v(1), $o1)
+    }
+    nc.threshold = -20
+    if (numarg() == 2) { $o2 = nc } // for backward compatibility
+    return nc
+}
+
+
 endtemplate SCACell

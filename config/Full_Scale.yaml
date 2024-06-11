@@ -56,16 +56,19 @@ Cell Types:
       density: !include SCA_synapse_density.yaml
   EC:
     template: VecStim
+    synapses: {}
     spike train:
       namespace: Input Spikes
       attribute: Spike Train
   CA2:
     template: VecStim
+    synapses: {}
     spike train:
       namespace: Input Spikes
       attribute: Spike Train
   CA3:
     template: VecStim
+    synapses: {}
     spike train:
       namespace: Input Spikes
       attribute: Spike Train

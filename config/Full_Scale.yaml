@@ -29,15 +29,15 @@ Cell Types:
   IS1:
     template: ISCell
     synapses:
-      density: !include IS_synapse_density.yaml
+      density: !include IS1_synapse_density.yaml
   IS2:
     template: ISCell
     synapses:
-      density: !include IS_synapse_density.yaml
+      density: !include IS2_synapse_density.yaml
   IS3:
     template: ISCell
     synapses:
-      density: !include IS_synapse_density.yaml
+      density: !include IS3_synapse_density.yaml
   IVY:
     template: IvyCell
     synapses:

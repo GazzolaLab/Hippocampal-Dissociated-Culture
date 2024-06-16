@@ -26,6 +26,14 @@ Cell Types:
     template: CCKBasketCell
     synapses:
       density: !include CCKBC_synapse_density.yaml
+  AAC:
+    template: AxoAxonicCell
+    synapses:
+      density: !include AAC_synapse_density.yaml
+  BS:
+    template: BistratifiedCell
+    synapses:
+      density: !include BS_synapse_density.yaml
   IS1:
     template: ISCell
     synapses:

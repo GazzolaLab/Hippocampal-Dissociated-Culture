@@ -24,10 +24,10 @@ basal:
 apical:
   excitatory:
     SLM:
-      mean: 0.61
+      mean: 1.0
       variance: 0.1
     SR:
-      mean: 0.61
+      mean: 1.0
       variance: 0.1
 
   inhibitory:

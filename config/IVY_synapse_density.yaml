@@ -5,14 +5,14 @@
 
 apical:
   excitatory:
-    SO:
+    SR:
       mean: 3.16
       variance: 0.1
     SP:
       mean: 3.16
       variance: 0.1
   inhibitory:
-    SO:
+    SR:
       mean: 0.60
       variance: 0.10
     SP:
@@ -21,11 +21,17 @@ apical:
       
 basal:
   excitatory:
-    SR:
+    SO:
+      mean: 3.16
+      variance: 0.1
+    SP:
       mean: 3.16
       variance: 0.1
   inhibitory:
-    SR:
+    SP:
+      mean: 0.60
+      variance: 0.1
+    SO:
       mean: 0.60
       variance: 0.1
 soma:

@@ -13,17 +13,40 @@ Selectivity Type Probabilities:
   OLM:
     constant: 1.0
 
+## Data from Pelkey KA, Chittajallu R, Craig MT, Tricoire L, Wester JC, McBain CJ. Hippocampal GABAergic Inhibitory Interneurons. Physiol Rev. 2017 Oct 1;97(4):1619-1747.
 
 Peak Rate:
-  STIM:
-    constant: 80.0
   PYR:
-    constant: 20.0
+    constant: 2.0
+  AAC:
+    constant: 10.0
   PVBC:
     constant: 21.0
+  BS:
+    constant: 18.0
   OLM:
     constant: 10.0
-
+  CCKBC:
+    constant: 24.0
+  IVY:
+    constant: 3.0
+  NGFC:
+    constant: 10.0
+  SCA:
+    constant: 5.0
+  IS1:
+    constant: 20.0
+  IS2:
+    constant: 20.0
+  IS3:
+    constant: 20.0
+  CA3:
+    constant: 5.0
+  CA2:
+    constant: 5.0
+  EC:
+    constant: 20.0
+    
 
 
 Global Oscillation:

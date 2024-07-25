@@ -1,4 +1,4 @@
-Synaptic Optimization:
+  Synaptic Optimization:
   PYR:
     Parameter ranges:
       Weight all:
@@ -30,3 +30,59 @@ Synaptic Optimization:
           margin: 4.0
       firing rate: 5.0
       fraction active: 0.33
+  PVBC:
+    Targets:
+      state:
+        v:
+          threshold: -43.1
+          margin: 2.0
+      firing rate: 21.0
+      fraction active: 0.9
+    Parameter ranges:
+      Weight all:
+        CA2:
+          !!python/tuple [apical, basal]:
+            AMPA:
+              weight: [0.1, 10.0]
+        CA3:
+          !!python/tuple [apical, basal]:
+            AMPA:
+              weight: [0.1, 10.0]
+        EC:
+          apical:
+            AMPA:
+              weight: [0.1, 10.0]
+        PYR:
+          !!python/tuple [basal, soma]:
+            GABA_A:
+              weight: [0.1, 10.0]
+        PVBC:
+          !!python/tuple [apical, basal, soma]:
+            GABA_A:
+              weight: [0.1, 20.0]
+        CCKBC:
+          !!python/tuple [apical, soma]:
+            GABA_A:
+              weight: [0.1, 20.0]
+        BS:
+          apical:
+            GABA_A:
+              weight: [0.1, 20.0]
+        IVY:
+          apical:
+            GABA_A:
+              weight: [0.1, 20.0]
+        SCA:
+          apical:
+            GABA_A:
+              weight: [0.1, 20.0]
+        NGFC:
+          apical:
+            GABA_A:
+              weight: [0.1, 2.0]
+            GABA_B:
+              weight: [0.1, 2.0]
+        OLM:
+          apical:
+            GABA_A:
+              weight: [0.1, 20.0]

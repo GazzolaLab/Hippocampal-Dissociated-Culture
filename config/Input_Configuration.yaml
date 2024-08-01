@@ -4,13 +4,33 @@ Temporal Resolution: 1.0  # ms
 Equilibration Duration: 250. # ms
 
 Selectivity Type Probabilities:
-  STIM:
-    constant: 1.0
   PYR:
     constant: 1.0
   PVBC:
     constant: 1.0
   OLM:
+    constant: 1.0
+  AAC:
+    constant: 1.0
+  CCKBC:
+    constant: 1.0
+  IVY:
+    constant: 1.0
+  NGFC:
+    constant: 1.0
+  SCA:
+    constant: 1.0
+  IS1:
+    constant: 1.0
+  IS2:
+    constant: 1.0
+  IS3:
+    constant: 1.0
+  CA3:
+    constant: 1.0
+  CA2:
+    constant: 1.0
+  EC:
     constant: 1.0
 
 ## Data from Pelkey KA, Chittajallu R, Craig MT, Tricoire L, Wester JC, McBain CJ. Hippocampal GABAergic Inhibitory Interneurons. Physiol Rev. 2017 Oct 1;97(4):1619-1747.

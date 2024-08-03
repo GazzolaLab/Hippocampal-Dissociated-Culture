@@ -12,6 +12,8 @@ Selectivity Type Probabilities:
     constant: 1.0
   AAC:
     constant: 1.0
+  BS:
+    constant: 1.0
   CCKBC:
     constant: 1.0
   IVY:

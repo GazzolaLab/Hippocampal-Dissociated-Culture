@@ -10,7 +10,7 @@
 ##  - CA2 connections in SR
 Synapse Mechanisms:
   AMPA: LinExp2Syn 
-  NMDA: FacilNMDA
+  NMDA: LinExp2SynNMDA
   GABA_A: LinExp2Syn
   GABA_B: LinExp2Syn
 Synapse Parameter Rules: !include Synapse_Parameter_Rules.yaml
@@ -160,13 +160,12 @@ Synapses:
       sections: [basal,  apical]
       layers: [SO, SLM]
       proportions: [0.015, 0.32]
-      swctype mechanisms:
-        apical:
-          GABA_A:
-            tau_rise:  0.13
-            tau_decay: 11.0
-            e:   -60
-            g_unit: 0.00120
+      mechanisms:
+        GABA_A:
+          tau_rise:  0.13
+          tau_decay: 11.0
+          e:   -60
+          g_unit: 0.00120
   AAC:
     CA2:
       type: excitatory

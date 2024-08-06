@@ -20,6 +20,9 @@ objref all, soma_list, apical_list, basal_list, axon_list, oblique_list, trunk_l
 public soma_SP_list, apical_SR_list, apical_SLM_list, basal_SO_list, axon_SO_list, ais_SR_list, ais_SP_list
 objref soma_SP_list, apical_SR_list, apical_SLM_list, basal_SO_list, axon_SO_list, ais_SR_list, ais_SP_list
 
+public soma_SP_index, apical_SR_index, apical_SLM_index, basal_SO_index, axon_SO_index, ais_SR_index, ais_SP_index
+objref soma_SP_index, apical_SR_index, apical_SLM_index, basal_SO_index, axon_SO_index, ais_SR_index, ais_SP_index
+
 create soma[1], radTprox1, radTprox2, radTmed1, radTmed2, radTdist1, radTdist2, lm_thick2, lm_medium2, lm_thin2, axon
 create rad_t1, rad_t2, rad_t3
 create lm_thick1, lm_medium1, lm_thin1, oriprox1, oridist1_1, oridist1_2, oriprox2, oridist2_1, oridist2_2
@@ -93,7 +96,7 @@ proc basic_shape() {
   axon {pt3dclear() pt3dadd(15, 0, 0, 1) pt3dadd(15, -150, 0, 1)}
 }
 
-proc subsets() {
+proc subsets() { local section_index
   all = new SectionList()
   soma all.append()
   radTprox1 all.append()
@@ -136,26 +139,67 @@ proc subsets() {
   lm_thick1 apical_list.append()
   lm_medium1 apical_list.append()
   lm_thin1 apical_list.append()
+
+  section_index = 0
   
+  soma_list = new SectionList()
+  soma soma_list.append()
+  soma_SP_list = new SectionList()
+  soma_SP_index = new Vector()
+  soma_SP_index.append(section_index)
+  section_index += 1
+  soma soma_SP_list.append()
+
   apical_SR_list = new SectionList()
+  apical_SR_index = new Vector()
   radTprox1 apical_SR_list.append()
+  apical_SR_index.append(section_index)
+  section_index += 1
   radTprox2 apical_SR_list.append()
+  apical_SR_index.append(section_index)
+  section_index += 1
   radTmed1 apical_SR_list.append()
+  apical_SR_index.append(section_index)
+  section_index += 1
   radTmed2 apical_SR_list.append()
+  apical_SR_index.append(section_index)
+  section_index += 1
   radTdist1 apical_SR_list.append()
+  apical_SR_index.append(section_index)
+  section_index += 1
   radTdist2 apical_SR_list.append()
+  apical_SR_index.append(section_index)
+  section_index += 1
   rad_t1 apical_SR_list.append()
+  apical_SR_index.append(section_index)
+  section_index += 1
   rad_t2 apical_SR_list.append()
+  apical_SR_index.append(section_index)
+  section_index += 1
   rad_t3 apical_SR_list.append()
-  
+  apical_SR_index.append(section_index)
+  section_index += 1
 
   apical_SLM_list = new SectionList()
+  apical_SLM_index = new Vector()
   lm_thick2 apical_SLM_list.append()
+  apical_SLM_index.append(section_index)
+  section_index += 1
   lm_medium2 apical_SLM_list.append()
+  apical_SLM_index.append(section_index)
+  section_index += 1
   lm_thin2 apical_SLM_list.append()
+  apical_SLM_index.append(section_index)
+  section_index += 1
   lm_thick1 apical_SLM_list.append()
+  apical_SLM_index.append(section_index)
+  section_index += 1
   lm_medium1 apical_SLM_list.append()
+  apical_SLM_index.append(section_index)
+  section_index += 1
   lm_thin1 apical_SLM_list.append()
+  apical_SLM_index.append(section_index)
+  section_index += 1
 
   basal_list = new SectionList()
   oriprox1 basal_list.append()
@@ -166,27 +210,44 @@ proc subsets() {
   oridist2_2 basal_list.append()
 
   basal_SO_list = new SectionList()
+  basal_SO_index = new Vector()
   oriprox1 basal_SO_list.append()
+  basal_SO_index.append(section_index)
+  section_index += 1
   oridist1_1 basal_SO_list.append()
+  basal_SO_index.append(section_index)
+  section_index += 1
   oridist1_2 basal_SO_list.append()
+  basal_SO_index.append(section_index)
+  section_index += 1
   oriprox2 basal_SO_list.append()
+  basal_SO_index.append(section_index)
+  section_index += 1
   oridist2_1 basal_SO_list.append()
+  basal_SO_index.append(section_index)
+  section_index += 1
   oridist2_2 basal_SO_list.append()
-
-  soma_list = new SectionList()
-  soma soma_list.append()
-  soma_SP_list = new SectionList()
-  soma soma_SP_list.append()
+  basal_SO_index.append(section_index)
+  section_index += 1
 
   axon_list = new SectionList()
   axon axon_list.append()
 
   axon_SO_list = new SectionList()
+  axon_SO_index = new Vector()
   axon axon_SO_list.append()
+  axon_SO_index.append(section_index)
+  section_index += 1
   ais_SR_list = new SectionList()
+  ais_SR_index = new Vector()
   axon ais_SR_list.append()
+  ais_SR_index.append(section_index)
+  section_index += 1
   ais_SP_list = new SectionList()
+  ais_SP_index = new Vector()
   axon ais_SP_list.append()
+  ais_SP_index.append(section_index)
+  section_index += 1
 
   trunk_list = new SectionList()
   radTprox1 trunk_list.append()
@@ -369,7 +430,7 @@ proc biophys() {
 
     forsec basal_list {
         gkdrbar_kdr = 0.0043036502438625682
-        gbar_nax = 0.038280628170345957
+        gbar_nax = 0.03
         gcalbar_cal = 8.0324964335287e-06
         gcanbar_can = 2.2618914062501833e-06
         gcatbar_cat = 1.184948741542104e-06

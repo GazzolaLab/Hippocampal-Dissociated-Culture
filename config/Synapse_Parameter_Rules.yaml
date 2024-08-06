@@ -31,3 +31,18 @@ LinExp2SynNMDA:
       weight: 0
       g_unit: 1
     netcon_state: {}
+SatExp2Syn:
+    mech_file: sat_exp2syn.mod
+    mech_params:
+      - sat
+      - dur_onset
+      - tau_offset
+      - e
+    netcon_params:
+      weight: 0
+      g_unit: 1
+    netcon_state:
+      onset: 2
+      count: 3
+      g0: 4
+      t0: 5

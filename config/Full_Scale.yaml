@@ -28,6 +28,8 @@ Cell Types:
       density: !include CCKBC_synapse_density.yaml
   AAC:
     template: AxoAxonicCell
+    template file: PR_nrn.hoc
+    mechanism file: CA1_AAC_PR_config.yaml
     synapses:
       density: !include AAC_synapse_density.yaml
   BS:

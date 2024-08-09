@@ -1,4 +1,6 @@
 PinskyRinzel:
+  V_rest: -64.0
+  V_threshold: -40.0
   Ltotal: 10.24291706085205
   cm_ratio: 45.7627067565918
   dend_beta_Caconc: 0.010030322708189487
@@ -10,8 +12,7 @@ PinskyRinzel:
   gc: 37.8539924621582
   global_cm: 3.0
   global_diam: 10.0
-  ic_constant_hold: -0.026461713016033173
-  ic_constant_rest: -0.01663380116224289
+  ic_constant: -0.01663380116224289
   pp: 0.5245572924613953
   soma_g_pas: 0.0018823655555024743
   soma_gmax_K: 0.8779263496398926

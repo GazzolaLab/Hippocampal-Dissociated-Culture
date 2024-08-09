@@ -1,21 +1,22 @@
-## Model configuration of microcircuit network
-Model Name: CA1_Full_Scale
-Dataset Name: CA1_Full_Scale
+## Network clamp configuration for PYR
+Network Clamp:  !include Network_Clamp.yaml
+Model Name: Network_Clamp_AAC
+Dataset Name: Single
 Definitions: !include Definitions.yaml
-Global Parameters: !include Global.yaml
 Geometry: !include Geometry.yaml
 Random Seeds: !include Random.yaml
+Cell Data: AAC_selection_318030.h5
+Connection Data: AAC_selection_318030.h5
 Connection Generator: !include Full_Scale_Connections.yaml
-Cell Data: CA1_Cells_Full_Scale_20221026.h5
-Connection Data: CA1_Connections_Full_Scale_20221026.h5
 Recording: !include Recording.yaml
 Stimulus: !include Input_Configuration.yaml
 Analysis: !include Analysis_Configuration.yaml
+
+## Cell types for dentate gyrus model
 Cell Types:
   PYR:
-#    template: PoolosPyramidalCell  # SC_nrn
-#    mechanism file: PYR_SoldadoMagraner.yaml
-    template: PoolosPyramidalCell
+#    template: PoolosPyramidalCell
+    template: TomkoPyramidalCell
     synapses:
       density: !include PYR_synapse_density.yaml
   PVBC:

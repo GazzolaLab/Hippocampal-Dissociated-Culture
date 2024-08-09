@@ -237,7 +237,7 @@ Synapses:
           tau_rise: 0.5
           tau_decay: 3.0
           e: 0
-          g_unit: 0.001
+          g_unit: 0.0002
           weight: 1.0
     CA3:
       type: excitatory
@@ -249,7 +249,7 @@ Synapses:
           tau_rise: 0.5
           tau_decay: 3.0
           e: 0
-          g_unit: 0.001
+          g_unit: 0.0002
           weight: 1.0
     EC:
       type: excitatory
@@ -261,7 +261,7 @@ Synapses:
           tau_rise: 2.0
           tau_decay: 6.3
           e: 0
-          g_unit: 0.002     
+          g_unit: 0.0005     
           weight: 1.0
     PYR:
       type: excitatory
@@ -276,7 +276,7 @@ Synapses:
           g_unit: 0.0005
           weight: 1.0
         NMDA:
-          g_unit: 0.0005
+          g_unit: 0.002
           weight: 1.0
     PVBC:   
       type: inhibitory

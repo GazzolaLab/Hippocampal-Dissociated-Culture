@@ -1,12 +1,12 @@
 ## Network clamp configuration for PYR
 Network Clamp:  !include Network_Clamp.yaml
-Model Name: Network_Clamp_BS
+Model Name: Network_Clamp_OLM
 Dataset Name: Single
 Definitions: !include Definitions.yaml
 Geometry: !include Geometry.yaml
 Random Seeds: !include Random.yaml
-Cell Data: BS_selection_319410.h5
-Connection Data: BS_selection_319410.h5
+Cell Data: OLM_selection_337610.h5
+Connection Data: OLM_selection_337610.h5
 Connection Generator: !include Full_Scale_Connections.yaml
 Recording: !include Recording.yaml
 Stimulus: !include Input_Configuration.yaml

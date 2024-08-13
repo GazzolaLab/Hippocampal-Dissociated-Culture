@@ -1043,6 +1043,7 @@ Synapses:
           tau_decay: 3.0
           e: 0
           g_unit: 0.001
+          weight: 1.0
     CA3:
       type: excitatory
       sections: [basal]
@@ -1054,6 +1055,7 @@ Synapses:
           tau_decay: 2.5
           e: 0
           g_unit: 0.001
+          weight: 1.0
     BS:   
       type: inhibitory
       sections: [basal]
@@ -1063,8 +1065,9 @@ Synapses:
         GABA_A:
           tau_rise: 0.287
           tau_decay: 2.67
-          e: -60
-          g_unit: 0.001
+          e: -75
+          g_unit: 0.0002
+          weight: 1.0
     IVY:
       type: inhibitory
       sections: [basal]
@@ -1074,8 +1077,9 @@ Synapses:
         GABA_A:
           tau_rise: 2.9
           tau_decay: 3.1
-          e: -60
-          g_unit: 0.001
+          e: -75
+          g_unit: 0.0002
+          weight: 1.0
     SCA:
       type: inhibitory
       sections: [basal]
@@ -1085,8 +1089,9 @@ Synapses:
         GABA_A:
           tau_rise: 0.419
           tau_decay: 4.99
-          e: -60
-          g_unit:  0.001
+          e: -75
+          g_unit:  0.0005
+          weight: 1.0
     NGFC: 
       type: inhibitory
       sections: [apical]
@@ -1097,13 +1102,15 @@ Synapses:
           GABA_A:
             tau_rise:  8.0
             tau_decay: 39.0
-            e:   -60
-            g_unit: 0.001
+            e:   -75
+            g_unit: 0.0005
+            weight: 1.0
           GABA_B:
             tau_rise:  180.0
             tau_decay: 200.0
             e:   -90
-            g_unit: 0.001
+            g_unit: 0.00003
+            weight: 1.0
     OLM: 
       type: inhibitory
       sections: [apical]
@@ -1114,8 +1121,9 @@ Synapses:
           GABA_A:
             tau_rise:  1.1
             tau_decay: 5.0
-            e:   -60
-            g_unit: 0.001
+            e:   -75
+            g_unit: 0.0005
+            weight: 1.0
   SCA:
     CA2:
       type: excitatory

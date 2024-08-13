@@ -1,0 +1,22 @@
+PinskyRinzel:
+  V_rest: -65.0
+  V_threshold: -42.0
+  Ltotal: 18.957544326782227
+  cm_ratio: 19.966733932495117
+  dend_aqs_KAHP: 2.0e-05
+  dend_beta_Caconc: 0.075
+  dend_bq_KAHP: 0.001
+  dend_d_Caconc: 13.0
+  dend_g_pas: 0.00328495679423213
+  dend_gmax_Ca: 0.3498542010784149
+  dend_gmax_KAHP: 0.009729540906846523
+  dend_gmax_KCa: 0.8999999761581421
+  e_pas: -62
+  gc: 25.553373336791992
+  global_cm: 3.0
+  global_diam: 10.0
+  ic_constant: 0.009580999666592493
+  pp: 0.5604825019836426
+  soma_g_pas: 0.0020368655677884817
+  soma_gmax_K: 0.3882972002029419
+  soma_gmax_Na: 0.5511928796768188

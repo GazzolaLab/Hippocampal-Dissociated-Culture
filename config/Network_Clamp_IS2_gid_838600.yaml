@@ -1,12 +1,12 @@
 ## Network clamp configuration for PYR
 Network Clamp:  !include Network_Clamp.yaml
-Model Name: Network_Clamp_NGFC
+Model Name: Network_Clamp_IS2
 Dataset Name: Single
 Definitions: !include Definitions.yaml
 Geometry: !include Geometry.yaml
 Random Seeds: !include Random.yaml
-Cell Data: NGFC_selection_335030.h5
-Connection Data: NGFC_selection_335030.h5
+Cell Data: IS2_selection_838600.h5
+Connection Data: IS2_selection_838600.h5
 Connection Generator: !include Full_Scale_Connections.yaml
 Recording: !include Recording.yaml
 Stimulus: !include Input_Configuration.yaml
@@ -40,15 +40,39 @@ Cell Types:
     synapses:
       density: !include BS_synapse_density.yaml
   IS1:
-    template: ISCell
+    template: PR_nrn
+    template file: PR_nrn.hoc
+    mechanism file: CA1_IS_PR_config.yaml
     synapses:
       density: !include IS1_synapse_density.yaml
   IS2:
-    template: ISCell
+    template: PR_nrn
+    template file: PR_nrn.hoc
+    mechanism file: CA1_IS_PR_config.yaml
     synapses:
       density: !include IS2_synapse_density.yaml
   IS3:
-    template: ISCell
+    template: PR_nrn
+    template file: PR_nrn.hoc
+    mechanism file: CA1_IS_PR_config.yaml
+    synapses:
+      density: !include IS3_synapse_density.yaml
+  IS1:
+    template: PR_nrn
+    template file: PR_nrn.hoc
+    mechanism file: CA1_IS_PR_config.yaml
+    synapses:
+      density: !include IS1_synapse_density.yaml
+  IS2:
+    template: PR_nrn
+    template file: PR_nrn.hoc
+    mechanism file: CA1_IS_PR_config.yaml
+    synapses:
+      density: !include IS2_synapse_density.yaml
+  IS3:
+    template: PR_nrn
+    template file: PR_nrn.hoc
+    mechanism file: CA1_IS_PR_config.yaml
     synapses:
       density: !include IS3_synapse_density.yaml
   IVY:

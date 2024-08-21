@@ -6,8 +6,8 @@ Global Parameters: !include Global.yaml
 Geometry: !include Geometry.yaml
 Random Seeds: !include Random.yaml
 Connection Generator: !include Full_Scale_Connections.yaml
-Cell Data: CA1_Cells_Full_Scale_20221026.h5
-Connection Data: CA1_Connections_Full_Scale_20221026.h5
+Cell Data: CA1_Full_Scale.h5
+Connection Data: CA1_Full_Scale.h5
 Recording: !include Recording.yaml
 Stimulus: !include Input_Configuration.yaml
 Analysis: !include Analysis_Configuration.yaml

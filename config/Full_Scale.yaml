@@ -1,6 +1,6 @@
 ## Model configuration of microcircuit network
-Model Name: CA1_Full_Scale
-Dataset Name: CA1_Full_Scale
+Model Name: Full_Scale
+Dataset Name: Full_Scale
 Definitions: !include Definitions.yaml
 Global Parameters: !include Global.yaml
 Geometry: !include Geometry.yaml

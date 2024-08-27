@@ -1,4 +1,4 @@
-  Synaptic Optimization:
+Synaptic Optimization:
   PYR:
     Parameter ranges:
       Weight all:
@@ -86,3 +86,135 @@
           apical:
             GABA_A:
               weight: [0.1, 20.0]
+  IS1:
+    Targets:
+      state:
+        v:
+          threshold: -43.1
+          margin: 2.0
+      firing rate: 20.0
+      fraction active: 0.9
+    Parameter ranges:
+      Weight all:
+        CA2:
+          !!python/tuple [apical, basal]:
+            AMPA:
+              weight: [0.1, 10.0]
+        CA3:
+          !!python/tuple [apical, basal]:
+            AMPA:
+              weight: [0.1, 10.0]
+        PYR:
+          !!python/tuple [soma, basal]:
+            AMPA:
+              weight: [0.1, 10.0]
+        PVBC:   
+          soma:
+            GABA_A:
+              weight: [0.1, 10.0]
+        BS:   
+          apical:
+            GABA_A:
+              weight: [0.1, 10.0]
+        IVY:
+          !!python/tuple [apical, basal]:
+            GABA_A:
+              weight: [0.1, 10.0]
+        SCA:
+          !!python/tuple [apical, basal]:
+            GABA_A:
+              weight: [0.1, 10.0]
+        IS1: 
+          basal:
+            GABA_A:
+              weight: [0.1, 10.0]
+        IS2: 
+          apical:
+            GABA_A:
+              weight: [0.1, 10.0]
+  IS2:
+    Targets:
+      state:
+        v:
+          threshold: -43.1
+          margin: 2.0
+      firing rate: 20.0
+      fraction active: 0.9
+    Parameter ranges:
+      Weight all:
+        EC:
+          apical:
+            AMPA:
+              weight: [0.1, 10.0]
+        CA3:
+          !!python/tuple [soma, apical, basal]:
+            AMPA:
+              weight: [0.1, 10.0]
+        NGFC: 
+          !!python/tuple [soma, apical, basal]:
+            GABA_A:
+              weight: [0.1, 10.0]
+        SCA: 
+          basal:
+            GABA_A:
+              weight: [0.1, 10.0]
+        IS1: 
+          !!python/tuple [soma, apical]:
+            GABA_A:
+              weight: [0.1, 10.0]
+        
+  IS3:
+    Targets:
+      state:
+        v:
+          threshold: -43.1
+          margin: 2.0
+      firing rate: 20.0
+      fraction active: 0.9
+    Parameter ranges:
+      Weight all:
+        CA2:
+          !!python/tuple [soma, apical, basal]:
+            AMPA:
+              weight: [0.1, 10.0]
+        CA3:
+          !!python/tuple [soma, apical, basal]:
+            AMPA:
+              weight: [0.1, 10.0]
+        EC:
+          apical:
+            AMPA:
+              weight: [0.1, 10.0]
+        PYR:
+          basal:
+            AMPA:
+              weight: [0.1, 10.0]
+        PVBC:
+          soma:
+            GABA_A:
+              weight: [0.1, 10.0]
+        BS:
+          !!python/tuple [apical, basal]:
+            GABA_A:
+              weight: [0.1, 10.0]
+        IVY:
+          !!python/tuple [apical, basal]:
+            GABA_A:
+              weight: [0.1, 10.0]
+        SCA:
+          apical:
+            GABA_A:
+              weight: [0.1, 10.0]
+        NGFC:
+          apical:
+            GABA_A:
+              weight: [0.1, 10.0]
+        IS1:
+          apical:
+            GABA_A:
+              weight: [0.1, 10.0]
+        IS2:
+          apical:
+            GABA_A:
+              weight: [0.1, 10.0]
+        

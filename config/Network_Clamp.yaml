@@ -15,7 +15,7 @@ Synaptic Optimization:
             AMPA:
               weight: [0.1, 10.0]
         EC:
-          apical:
+          !!python/tuple [apical, basal]:
             AMPA:
               weight: [0.1, 10.0]
         AAC:

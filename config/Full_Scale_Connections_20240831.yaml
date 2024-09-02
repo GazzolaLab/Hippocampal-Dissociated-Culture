@@ -685,7 +685,7 @@ Synapses:
           tau_decay: 6.3
           e: 0
           g_unit: 0.004
-          weight: 
+          weight: 1.0
     CA2:
       type: excitatory
       sections: [apical, apical, basal]

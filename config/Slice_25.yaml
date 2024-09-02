@@ -1,0 +1,95 @@
+## Model configuration of microcircuit network
+Model Name: CA1_Microcircuit
+Dataset Name: Microcircuit
+Definitions: !include Definitions.yaml
+Global Parameters: !include Global.yaml
+Geometry: !include Geometry.yaml
+Random Seeds: !include Random.yaml
+Connection Generator: !include Full_Scale_Connections_20240831.yaml
+Cell Data: CA1_Slice_25.h5
+Connection Data: CA1_Slice_25.h5
+Recording: !include Recording.yaml
+Stimulus: !include Input_Configuration.yaml
+Analysis: !include Analysis_Configuration.yaml
+Cell Types:
+  PYR:
+    template: TomkoPyramidalCell
+    synapses:
+      density: !include PYR_synapse_density.yaml
+  PVBC:
+    template: PRN_nrn
+    template file: PRN_nrn.hoc
+    mechanism file: CA1_PVBC_PR_config.yaml
+    synapses:
+      density: !include PVBC_synapse_density.yaml
+  CCKBC:
+    template: PRN_nrn
+    template file: PRN_nrn.hoc
+    mechanism file: CA1_CCKBC_PR_config.yaml
+    synapses:
+      density: !include CCKBC_synapse_density.yaml
+  AAC:
+    template: PRN_nrn
+    template file: PRN_nrn.hoc
+    mechanism file: CA1_AAC_PR_config.yaml
+    synapses:
+      density: !include AAC_synapse_density.yaml
+  BS:
+    template: PRN_nrn
+    template file: PRN_nrn.hoc
+    mechanism file: CA1_BS_PR_config.yaml
+    synapses:
+      density: !include BS_synapse_density.yaml
+  IS1:
+    template: PR_nrn
+    template file: PR_nrn.hoc
+    mechanism file: CA1_IS_PR_config.yaml
+    synapses:
+      density: !include IS1_synapse_density.yaml
+  IS2:
+    template: PR_nrn
+    template file: PR_nrn.hoc
+    mechanism file: CA1_IS_PR_config.yaml
+    synapses:
+      density: !include IS2_synapse_density.yaml
+  IS3:
+    template: PR_nrn
+    template file: PR_nrn.hoc
+    mechanism file: CA1_IS_PR_config.yaml
+    synapses:
+      density: !include IS3_synapse_density.yaml
+  IVY:
+    template: IvyCell
+    synapses:
+      density: !include IVY_synapse_density.yaml
+  NGFC:
+    template: PR_nrn
+    template file: PR_nrn.hoc
+    mechanism file: CA1_NGFC_PR_config.yaml
+    synapses:
+      density: !include NGFC_synapse_density.yaml
+  OLM:
+    template: PRN_nrn
+    template file: PRN_nrn.hoc
+    mechanism file: CA1_OLM_PR_config.yaml
+    synapses:
+      density: !include OLM_synapse_density.yaml
+  SCA:
+    template: SCACell
+    synapses:
+      density: !include SCA_synapse_density.yaml
+  EC:
+    template: VecStim
+    spike train:
+      namespace: Input Spikes
+      attribute: Spike Train
+  CA2:
+    template: VecStim
+    spike train:
+      namespace: Input Spikes
+      attribute: Spike Train
+  CA3:
+    template: VecStim
+    spike train:
+      namespace: Input Spikes
+      attribute: Spike Train

@@ -208,19 +208,21 @@ Synaptic Optimization:
         CA2:
           !!python/tuple [apical, basal]:
             AMPA:
-              weight: [0.1, 10.0]
+              weight: [0.1, 20.0]
         CA3:
           !!python/tuple [apical, basal]:
             AMPA:
-              weight: [0.1, 10.0]
+              weight: [0.1, 20.0]
         EC:
           apical:
             AMPA:
-              weight: [0.1, 10.0]
+              weight: [0.1, 20.0]
         PYR:
           !!python/tuple [basal, soma]:
-            GABA_A:
-              weight: [0.1, 10.0]
+            AMPA:
+              weight: [0.1, 20.0]
+            NMDA:
+              weight: [0.1, 20.0]
         PVBC:
           !!python/tuple [apical, basal, soma]:
             GABA_A:
@@ -244,9 +246,9 @@ Synaptic Optimization:
         NGFC:
           apical:
             GABA_A:
-              weight: [0.1, 10.0]
+              weight: [0.1, 20.0]
             GABA_B:
-              weight: [0.1, 10.0]
+              weight: [0.1, 20.0]
         OLM:
           apical:
             GABA_A:
@@ -264,19 +266,21 @@ Synaptic Optimization:
         CA2:
           !!python/tuple [apical, basal]:
             AMPA:
-              weight: [0.1, 10.0]
+              weight: [0.1, 20.0]
         CA3:
           !!python/tuple [apical, basal]:
             AMPA:
-              weight: [0.1, 10.0]
+              weight: [0.1, 20.0]
         EC:
           apical:
             AMPA:
-              weight: [0.1, 10.0]
+              weight: [0.1, 20.0]
         PYR:
           !!python/tuple [basal, soma]:
-            GABA_A:
-              weight: [0.1, 10.0]
+            AMPA:
+              weight: [0.1, 20.0]
+            NMDA:
+              weight: [0.1, 20.0]
         PVBC:
           !!python/tuple [apical, basal, soma]:
             GABA_A:
@@ -300,9 +304,9 @@ Synaptic Optimization:
         NGFC:
           apical:
             GABA_A:
-              weight: [0.1, 10.0]
+              weight: [0.1, 20.0]
             GABA_B:
-              weight: [0.1, 10.0]
+              weight: [0.1, 20.0]
         OLM:
           apical:
             GABA_A:

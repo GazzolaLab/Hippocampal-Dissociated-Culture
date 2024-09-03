@@ -193,6 +193,62 @@ Synaptic Optimization:
             GABA_A:
               weight: [0.1, 10.0]
             
+  AAC:
+    Targets:
+      state:
+        v:
+          threshold: -43.1
+          margin: 2.0
+      firing rate: 10.0
+      fraction active: 0.9
+    Parameter ranges:
+      Weight all:
+        CA2:
+          !!python/tuple [apical, basal]:
+            AMPA:
+              weight: [0.1, 10.0]
+        CA3:
+          !!python/tuple [apical, basal]:
+            AMPA:
+              weight: [0.1, 10.0]
+        EC:
+          apical:
+            AMPA:
+              weight: [0.1, 10.0]
+        PYR:
+          !!python/tuple [basal, soma]:
+            GABA_A:
+              weight: [0.1, 10.0]
+        PVBC:
+          !!python/tuple [apical, basal, soma]:
+            GABA_A:
+              weight: [0.1, 20.0]
+        CCKBC:
+          !!python/tuple [apical, soma]:
+            GABA_A:
+              weight: [0.1, 20.0]
+        BS:
+          apical:
+            GABA_A:
+              weight: [0.1, 20.0]
+        IVY:
+          apical:
+            GABA_A:
+              weight: [0.1, 20.0]
+        SCA:
+          apical:
+            GABA_A:
+              weight: [0.1, 20.0]
+        NGFC:
+          apical:
+            GABA_A:
+              weight: [0.1, 10.0]
+            GABA_B:
+              weight: [0.1, 10.0]
+        OLM:
+          apical:
+            GABA_A:
+              weight: [0.1, 20.0]
   PVBC:
     Targets:
       state:
@@ -274,27 +330,27 @@ Synaptic Optimization:
         PVBC:   
           soma:
             GABA_A:
-              weight: [0.1, 10.0]
+              weight: [0.1, 20.0]
         BS:   
           apical:
             GABA_A:
-              weight: [0.1, 10.0]
+              weight: [0.1, 20.0]
         IVY:
           !!python/tuple [apical, basal]:
             GABA_A:
-              weight: [0.1, 10.0]
+              weight: [0.1, 20.0]
         SCA:
           !!python/tuple [apical, basal]:
             GABA_A:
-              weight: [0.1, 10.0]
+              weight: [0.1, 20.0]
         IS1: 
           basal:
             GABA_A:
-              weight: [0.1, 10.0]
+              weight: [0.1, 20.0]
         IS2: 
           apical:
             GABA_A:
-              weight: [0.1, 10.0]
+              weight: [0.1, 20.0]
   IS2:
     Targets:
       state:

@@ -86,6 +86,8 @@ Synaptic Optimization:
           basal:
             AMPA:
               weight: [0.1, 10.0]
+            NMDA:
+              weight: [0.1, 10.0]
         PVBC:
           !!python/tuple [soma, basal]:
             GABA_A:

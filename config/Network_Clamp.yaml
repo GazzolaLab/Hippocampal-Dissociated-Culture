@@ -455,11 +455,15 @@ Synaptic Optimization:
         PYR:
           !!python/tuple [soma, basal]:
             AMPA:
-              weight: [0.1, 10.0]
+              weight: [0.1, 20.0]
         OLM:
           basal:
             GABA_A:
-              weight: [0.1, 10.0]
+              weight: [0.1, 20.0]
+        IS3:
+          basal:
+            GABA_A:
+              weight: [0.1, 20.0]
   IVY:
     Targets:
       state:

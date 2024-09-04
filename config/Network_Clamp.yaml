@@ -143,19 +143,21 @@ Synaptic Optimization:
         EC:
           apical:
             AMPA:
-              weight: [0.1, 10.0]
+              weight: [0.1, 20.0]
         CA2:
           !!python/tuple [apical, basal]:
             AMPA:
-              weight: [0.1, 10.0]
+              weight: [0.1, 20.0]
         CA3:
           !!python/tuple [apical, basal]:
             AMPA:
-              weight: [0.1, 10.0]
+              weight: [0.1, 20.0]
         PYR:
           !!python/tuple [soma, basal]:
             AMPA:
-              weight: [0.1, 10.0]
+              weight: [0.1, 20.0]
+            NMDA:
+              weight: [0.1, 20.0]
         PVBC:
           !!python/tuple [soma, basal]:
             GABA_A:
@@ -163,7 +165,7 @@ Synaptic Optimization:
         CCKBC:
           !!python/tuple [soma, apical]:
             GABA_A:
-              weight: [0.1, 10.0]
+              weight: [0.1, 20.0]
         BS:
           apical:
             GABA_A:
@@ -171,29 +173,29 @@ Synaptic Optimization:
         IVY:
           apical:
             GABA_A:
-              weight: [0.1, 10.0]
+              weight: [0.1, 20.0]
         SCA:
           apical:
             GABA_A:
-              weight: [0.1, 10.0]
+              weight: [0.1, 20.0]
         OLM:
           apical:
             GABA_A:
-              weight: [0.1, 10.0]
+              weight: [0.1, 20.0]
         NGFC:
           apical:
             GABA_A:
-              weight: [0.1, 10.0]
+              weight: [0.1, 20.0]
             GABA_B:
-              weight: [0.1, 10.0]
+              weight: [0.1, 20.0]
         IS1:
           basal:
             GABA_A:
-              weight: [0.1, 10.0]
+              weight: [0.1, 20.0]
         IS3:
           basal:
             GABA_A:
-              weight: [0.1, 10.0]
+              weight: [0.1, 20.0]
             
   AAC:
     Targets:

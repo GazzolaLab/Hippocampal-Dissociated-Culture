@@ -868,7 +868,19 @@ Synapses:
       type: inhibitory
       sections: [basal]
       layers: [SO]
-      proportions: [1.0]
+      proportions: [0.6]
+      mechanisms:
+        GABA_A:
+          tau_rise: 0.25
+          tau_decay: 7.5
+          e: -60
+          g_unit: 0.0001
+          weight: 1.0
+    IS3:
+      type: inhibitory
+      sections: [basal]
+      layers: [SO]
+      proportions: [0.4]
       mechanisms:
         GABA_A:
           tau_rise: 0.25

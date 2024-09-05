@@ -1295,7 +1295,7 @@ Synapses:
           tau_decay: 3.0
           e: 0
           g_unit: 0.001
-          weight: 0.1
+          weight: 0.23565166756922695
     CA3:
       type: excitatory
       sections: [apical, basal]
@@ -1307,7 +1307,7 @@ Synapses:
           tau_decay: 2.5
           e: 0
           g_unit: 0.001
-          weight: 0.1
+          weight: 0.12686930676223682
     PYR:
       type: excitatory
       sections: [soma, basal]
@@ -1319,10 +1319,10 @@ Synapses:
           tau_decay: 1.5
           e: 0
           g_unit: 0.001
-          weight: 0.1
+          weight: 0.4626539370845072
         NMDA:
           g_unit: 0.001
-          weight: 2.0
+          weight: 0.240162102854785
     PVBC:   
       type: inhibitory
       sections: [soma]
@@ -1334,7 +1334,7 @@ Synapses:
           tau_decay: 0.45
           e: -60
           g_unit: 0.0002
-          weight: 0.1
+          weight: 0.2152851432958307
     BS:   
       type: inhibitory
       sections: [apical]
@@ -1346,7 +1346,7 @@ Synapses:
           tau_decay: 2.67
           e: -60
           g_unit: 0.0002
-          weight: 0.5760109013860589
+          weight: 19.94271198879993
     IVY:
       type: inhibitory
       sections: [apical, basal]
@@ -1358,7 +1358,7 @@ Synapses:
           tau_decay: 3.1
           e: -60
           g_unit: 0.0002
-          weight: 0.1
+          weight: 19.274344940190367
     SCA:
       type: inhibitory
       sections: [apical, basal]
@@ -1370,7 +1370,7 @@ Synapses:
           tau_decay: 4.99
           e: -60
           g_unit: 0.0002
-          weight: 8.128696950050314
+          weight: 19.99999999225115
     IS1: 
       type: inhibitory
       sections: [basal]
@@ -1382,7 +1382,7 @@ Synapses:
           tau_decay: 5.0
           e:   -60
           g_unit: 0.0002
-          weight: 5.913575317655445
+          weight: 12.447985576261328
     IS2: 
       type: inhibitory
       sections: [apical]
@@ -1394,7 +1394,7 @@ Synapses:
           tau_decay: 5.0
           e:   -60
           g_unit: 0.0002
-          weight: 0.4395244929844664
+          weight: 0.18522125146366297
   IS2:
     EC:
       type: excitatory

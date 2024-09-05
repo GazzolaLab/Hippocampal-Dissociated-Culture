@@ -326,15 +326,17 @@ Synaptic Optimization:
         CA2:
           !!python/tuple [apical, basal]:
             AMPA:
-              weight: [0.1, 10.0]
+              weight: [0.1, 20.0]
         CA3:
           !!python/tuple [apical, basal]:
             AMPA:
-              weight: [0.1, 10.0]
+              weight: [0.1, 20.0]
         PYR:
           !!python/tuple [soma, basal]:
             AMPA:
-              weight: [0.1, 10.0]
+              weight: [0.1, 20.0]
+            NMDA:
+              weight: [0.1, 20.0]
         PVBC:   
           soma:
             GABA_A:

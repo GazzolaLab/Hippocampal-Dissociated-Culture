@@ -5,7 +5,6 @@ PinskyRinzel:
   cm_ratio: 10.373516082763672
   dend_aqs_KAHP: 2e-05
   dend_bq_KAHP: 0.001
-  dend_beta_Caconc: 0.075
   dend_beta_Caconc: 0.02460825815796852
   dend_d_Caconc: 16.273027420043945
   dend_g_pas: 0.09717453271150589

@@ -481,49 +481,51 @@ Synaptic Optimization:
         CA2:
           !!python/tuple [apical, basal]:
             AMPA:
-              weight: [0.1, 10.0]
+              weight: [0.1, 20.0]
         CA3:
           !!python/tuple [soma, apical, basal]:
             AMPA:
-              weight: [0.1, 10.0]
+              weight: [0.1, 20.0]
         PYR:
           !!python/tuple [apical, basal]:
             AMPA:
-              weight: [0.1, 10.0]
+              weight: [0.1, 20.0]
+            NMDA:
+              weight: [0.1, 20.0]
         PVBC:
           soma:
             GABA_A:
-              weight: [0.1, 10.0]
+              weight: [0.1, 20.0]
         CCKBC:
           !!python/tuple [soma, apical, basal]:
             GABA_A:
-              weight: [0.1, 10.0]
+              weight: [0.1, 20.0]
         BS:
           !!python/tuple [apical, basal]:
             GABA_A:
-              weight: [0.1, 10.0]
+              weight: [0.1, 20.0]
         IVY:
           !!python/tuple [apical, basal]:
             GABA_A:
-              weight: [0.1, 10.0]
+              weight: [0.1, 20.0]
         SCA:
           !!python/tuple [apical, basal]:
             GABA_A:
-              weight: [0.1, 10.0]
+              weight: [0.1, 20.0]
         NGFC:
           !!python/tuple [apical, basal]:
             GABA_A:
-              weight: [0.1, 10.0]
+              weight: [0.1, 20.0]
             GABA_B:
-              weight: [0.1, 10.0]
+              weight: [0.1, 20.0]
         IS1:
           !!python/tuple [apical, basal]:
             GABA_A:
-              weight: [0.1, 10.0]
+              weight: [0.1, 20.0]
         IS2:
           apical:
             GABA_A:
-              weight: [0.1, 10.0]
+              weight: [0.1, 20.0]
   NGFC:
     Targets:
       state:
@@ -537,33 +539,35 @@ Synaptic Optimization:
         EC:
           !!python/tuple [apical, basal]:
             AMPA:
-              weight: [0.1, 10.0]
+              weight: [0.1, 20.0]
+            NMDA:
+              weight: [0.1, 20.0]
         CA3:
           basal:
             AMPA:
-              weight: [0.1, 10.0]
+              weight: [0.1, 20.0]
         BS:
           basal:
             GABA_A:
-              weight: [0.1, 10.0]
+              weight: [0.1, 20.0]
         IVY:
           basal:
             GABA_A:
-              weight: [0.1, 10.0]
+              weight: [0.1, 20.0]
         SCA:
           basal:
             GABA_A:
-              weight: [0.1, 10.0]
+              weight: [0.1, 20.0]
         NGFC:
           apical:
             GABA_A:
-              weight: [0.1, 10.0]
+              weight: [0.1, 20.0]
             GABA_B:
-              weight: [0.1, 10.0]
+              weight: [0.1, 20.0]
         OLM:
           apical:
             GABA_A:
-              weight: [0.1, 10.0]
+              weight: [0.1, 20.0]
   SCA:
     Targets:
       state:

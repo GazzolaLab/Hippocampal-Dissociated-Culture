@@ -7,7 +7,7 @@ Geometry: !include Geometry.yaml
 Random Seeds: !include Random.yaml
 Cell Data: NGFC_selection_335030.h5
 Connection Data: NGFC_selection_335030.h5
-Connection Generator: !include Full_Scale_Connections.yaml
+Connection Generator: !include Full_Scale_Connections_20240902.yaml
 Recording: !include Recording.yaml
 Stimulus: !include Input_Configuration.yaml
 Analysis: !include Analysis_Configuration.yaml

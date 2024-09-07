@@ -5,7 +5,7 @@ Definitions: !include Definitions.yaml
 Global Parameters: !include Global.yaml
 Geometry: !include Geometry.yaml
 Random Seeds: !include Random.yaml
-Connection Generator: !include Full_Scale_Connections_20240902.yaml
+Connection Generator: !include Full_Scale_Connections_20240907.yaml
 Cell Data: CA1_Slice_25.h5
 Connection Data: CA1_Slice_25.h5
 Recording: !include Recording.yaml
@@ -59,7 +59,9 @@ Cell Types:
     synapses:
       density: !include IS3_synapse_density.yaml
   IVY:
-    template: IvyCell
+    template: PRN_nrn
+    template file: PRN_nrn.hoc
+    mechanism file: CA1_IVY_PR_config.yaml
     synapses:
       density: !include IVY_synapse_density.yaml
   NGFC:
@@ -75,7 +77,9 @@ Cell Types:
     synapses:
       density: !include OLM_synapse_density.yaml
   SCA:
-    template: SCACell
+    template: PRN_nrn
+    template file: PRN_nrn.hoc
+    mechanism file: CA1_SCA_PR_config.yaml
     synapses:
       density: !include SCA_synapse_density.yaml
   EC:

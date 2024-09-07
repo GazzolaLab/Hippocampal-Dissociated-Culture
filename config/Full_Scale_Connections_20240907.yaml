@@ -218,6 +218,9 @@ Synapses:
           e: 0
           g_unit: 0.0002
           weight: 0.493492193725527
+        NMDA:
+          g_unit: 0.001
+          weight: 1.0
     CA3:
       type: excitatory
       sections: [apical, basal]
@@ -230,6 +233,9 @@ Synapses:
           e: 0
           g_unit: 0.0002
           weight: 16.92041550779723
+        NMDA:
+          g_unit: 0.001
+          weight: 1.0
     EC:
       type: excitatory
       sections: [apical]
@@ -242,6 +248,9 @@ Synapses:
           e: 0
           g_unit: 0.0005     
           weight: 1.11857054092378
+        NMDA:
+          g_unit: 0.002
+          weight: 1.0
     PYR:
       type: excitatory
       sections: [basal, soma]
@@ -362,6 +371,9 @@ Synapses:
           e: 0
           g_unit: 0.0001
           weight: 15.610564726943721
+        NMDA:
+          g_unit: 0.0005
+          weight: 1.0
     CA3:
       type: excitatory
       sections: [apical, basal]
@@ -374,6 +386,9 @@ Synapses:
           e: 0
           g_unit: 0.0001
           weight: 18.79453357599686
+        NMDA:
+          g_unit: 0.0005
+          weight: 1.0
     EC:
       type: excitatory
       sections: [apical]
@@ -386,6 +401,9 @@ Synapses:
           e: 0
           g_unit: 0.0001
           weight: 10.699943644328004
+        NMDA:
+          g_unit: 0.0005
+          weight: 1.0
     PYR:
       type: excitatory
       sections: [basal, soma]
@@ -399,7 +417,7 @@ Synapses:
           g_unit: 0.0002
           weight: 5.251343346806637
         NMDA:
-          g_unit: 0.0001
+          g_unit: 0.0005
           weight: 3.7158381475484896
     PVBC:   
       type: inhibitory
@@ -884,6 +902,9 @@ Synapses:
           e: 0
           g_unit: 0.001
           weight: 17.246993822817597
+        NMDA:
+          g_unit: 0.0005
+          weight: 1.689388833362846
     CA3:
       type: excitatory
       sections: [soma, apical, basal, basal]
@@ -896,6 +917,9 @@ Synapses:
           e: 0
           g_unit: 0.001
           weight: 5.134344262715472
+        NMDA:
+          g_unit: 0.0005
+          weight: 1.689388833362846
     PYR:
       type: excitatory
       sections: [apical, basal]
@@ -1043,6 +1067,9 @@ Synapses:
           e: 0
           g_unit: 0.0005
           weight: 3.8022141456604004
+        NMDA:
+          g_unit: 0.0005
+          weight: 2.31038236618042
     BS:   
       type: inhibitory
       sections: [basal]

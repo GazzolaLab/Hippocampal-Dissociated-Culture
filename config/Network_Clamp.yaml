@@ -86,8 +86,6 @@ Synaptic Optimization:
           basal:
             AMPA:
               weight: [0.1, 20.0]
-            NMDA:
-              weight: [0.1, 20.0]
         PVBC:
           !!python/tuple [soma, basal]:
             GABA_A:
@@ -209,13 +207,19 @@ Synaptic Optimization:
           !!python/tuple [apical, basal]:
             AMPA:
               weight: [0.1, 20.0]
+            NMDA:
+              weight: [0.1, 20.0]
         CA3:
           !!python/tuple [apical, basal]:
             AMPA:
               weight: [0.1, 20.0]
+            NMDA:
+              weight: [0.1, 20.0]
         EC:
           apical:
             AMPA:
+              weight: [0.1, 20.0]
+            NMDA:
               weight: [0.1, 20.0]
         PYR:
           !!python/tuple [basal, soma]:
@@ -267,13 +271,19 @@ Synaptic Optimization:
           !!python/tuple [apical, basal]:
             AMPA:
               weight: [0.1, 20.0]
+            NMDA:
+              weight: [0.1, 20.0]
         CA3:
           !!python/tuple [apical, basal]:
             AMPA:
               weight: [0.1, 20.0]
+            NMDA:
+              weight: [0.1, 20.0]
         EC:
           apical:
             AMPA:
+              weight: [0.1, 20.0]
+            NMDA:
               weight: [0.1, 20.0]
         PYR:
           !!python/tuple [basal, soma]:
@@ -480,9 +490,13 @@ Synaptic Optimization:
           !!python/tuple [apical, basal]:
             AMPA:
               weight: [0.1, 20.0]
+            NMDA:
+              weight: [0.1, 20.0]
         CA3:
           !!python/tuple [soma, apical, basal]:
             AMPA:
+              weight: [0.1, 20.0]
+            NMDA:
               weight: [0.1, 20.0]
         PYR:
           !!python/tuple [apical, basal]:
@@ -543,6 +557,8 @@ Synaptic Optimization:
         CA3:
           basal:
             AMPA:
+              weight: [0.1, 20.0]
+            NMDA:
               weight: [0.1, 20.0]
         BS:
           basal:

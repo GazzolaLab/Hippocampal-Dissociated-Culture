@@ -1,13 +1,13 @@
 ## Model configuration of microcircuit network
-Model Name: Full_Scale
-Dataset Name: Full_Scale
+Model Name: CA1_Slice_500
+Dataset Name: Slice
 Definitions: !include Definitions.yaml
 Global Parameters: !include Global.yaml
 Geometry: !include Geometry.yaml
 Random Seeds: !include Random.yaml
 Connection Generator: !include Full_Scale_Connections_20240907.yaml
-Cell Data: CA1_Full_Scale.h5
-Connection Data: CA1_Full_Scale.h5
+Cell Data: CA1_Slice_500.h5
+Connection Data: CA1_Slice_500.h5
 Recording: !include Recording.yaml
 Stimulus: !include Input_Configuration.yaml
 Analysis: !include Analysis_Configuration.yaml

@@ -25,7 +25,7 @@ export results_path
 
 mkdir -p ${results_path}
 
-mpirun -n 576 run-network \
+mpirun -n 1152 run-network \
        --use-coreneuron \
       --config-file=${MAIN_CONFIG}  \
       --config-prefix=${CONFIG_PREFIX} \

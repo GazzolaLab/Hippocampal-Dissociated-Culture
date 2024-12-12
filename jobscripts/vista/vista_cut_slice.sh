@@ -13,9 +13,9 @@
 set -x
 
 
-export NEURONROOT=$SCRATCH/bin/nrnpython
-export PYTHONPATH=$HOME/model/Hippocampal-Dissociated-Culture:$NEURONROOT/lib/python:$SCRATCH/python3.9/site-packages:$PYTHONPATH
-export PATH=$NEURONROOT/bin:$SCRATCH/python3.9/site-packages/bin:$PATH
+export NEURONROOT=$SCRATCH/bin/nrnpython_gcc
+export PYTHONPATH=$HOME/model/Hippocampal-Dissociated-Culture:$NEURONROOT/lib/python:$SCRATCH/python3.11/site-packages:$PYTHONPATH
+export PATH=$NEURONROOT/bin:$SCRATCH/python3.11/site-packages/bin:$PATH
 
 
 export DATA_PREFIX=$SCRATCH/MiV

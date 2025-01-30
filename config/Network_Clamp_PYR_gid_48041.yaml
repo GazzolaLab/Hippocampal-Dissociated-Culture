@@ -16,7 +16,9 @@ Analysis: !include Analysis_Configuration.yaml
 Cell Types:
   PYR:
 #    template: PoolosPyramidalCell
-    template: TomkoPyramidalCell
+#    template: TomkoPyramidalCell
+    template class: templates.PyramidalCellBilash.PyramidalCell
+    mechanism file: CA1_PYR_Bilash.yaml
     synapses:
       density: !include PYR_synapse_density.yaml
   PVBC:

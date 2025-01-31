@@ -361,9 +361,8 @@ class PyramidalCell:
         self.oridist2a = h.Section(name='oridist2a', cell=self)
         self.oridist2b = h.Section(name='oridist2b', cell=self)
         self.axon = h.Section(name='axon', cell=self)
-        self.hillock = h.Section(name='hillock')
-        self.ais = h.Section(name='ais')
-        self.axon = h.Section(name='axon')
+        self.hillock = h.Section(name='hillock', cell=self)
+        self.ais = h.Section(name='ais', cell=self)
 
         # Initialize all the section lists
         self.all = h.SectionList()
@@ -382,9 +381,9 @@ class PyramidalCell:
         self.apical_SR_list = h.SectionList()
         self.apical_SLM_list = h.SectionList()
         self.basal_SO_list = h.SectionList()
-        self.axon_SO_list = h.SectionList()
-        self.ais_SO_list = h.SectionList()
-        self.hillock_SO_list = h.SectionList()
+        self.axon_SR_list = h.SectionList()
+        self.ais_SP_list = h.SectionList()
+        self.hillock_SP_list = h.SectionList()
 
         # Initialize the cell
         self.init()
@@ -483,9 +482,9 @@ class PyramidalCell:
         self.apical_SR_index = h.Vector()
         self.apical_SLM_index = h.Vector()
         self.basal_SO_index = h.Vector()
-        self.axon_SO_index = h.Vector()
-        self.hillock_SO_index = h.Vector()
-        self.ais_SO_index = h.Vector()
+        self.axon_SR_index = h.Vector()
+        self.hillock_SP_index = h.Vector()
+        self.ais_SP_index = h.Vector()
 
         # Add sections to specific lists with indices
         section_index = 0
@@ -547,20 +546,20 @@ class PyramidalCell:
 
         # AIS
         self.ais_list.append(sec=self.ais)
-        self.ais_SO_list.append(sec=self.ais)
-        self.ais_SO_index.append(section_index)
+        self.ais_SP_list.append(sec=self.ais)
+        self.ais_SP_index.append(section_index)
         section_index += 1
 
         # Hillock
         self.hillock_list.append(sec=self.hillock)
-        self.hillock_SO_list.append(sec=self.hillock)
-        self.hillock_SO_index.append(section_index)
+        self.hillock_SP_list.append(sec=self.hillock)
+        self.hillock_SP_index.append(section_index)
         section_index += 1
 
         # Axon
         self.axon_list.append(sec=self.axon)
-        self.axon_SO_list.append(sec=self.axon)
-        self.axon_SO_index.append(section_index)
+        self.axon_SR_list.append(sec=self.axon)
+        self.axon_SR_index.append(section_index)
         section_index += 1
 
     def geom(self):

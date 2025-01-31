@@ -23,7 +23,8 @@ ENDCOMMENT
 
 NEURON {
 	POINT_PROCESS LinExp2SynNMDA
-        RANGE vshift, Kd, gamma, mg
+	USEION ca READ eca WRITE ica
+        RANGE vshift, Kd, gamma, mg, pf
 	RANGE tau_rise, tau_decay, e, i
 	RANGE g, pnmda
 	NONSPECIFIC_CURRENT i
@@ -44,6 +45,7 @@ PARAMETER {
         vshift = 0 (mV)      : positive left-shifts mg unblock (reduces mg block at more negative voltages)
         Kd   = 3.57 	(mM) 	: modulate Mg concentration dependence
         gamma = 0.062 (/mV)	: modulate slope of Mg sensitivity
+	pf = 0.03  (1)      : 0.03 adjusted to give 15% ica at -60 mV
 
 }
 
@@ -53,6 +55,8 @@ ASSIGNED {
 	g (uS)
 	factor
 	pnmda
+	eca (mV)
+	ica (nA)
 }
 
 STATE {
@@ -76,7 +80,8 @@ BREAKPOINT {
 	SOLVE state METHOD cnexp
 	g = B - A
 	pnmda = mgblock(v)
-	i = g*pnmda*(v - e)
+	i = g*(v - e)*(1-pf)
+	ica = g*(v - eca)*pf
 }
 
 DERIVATIVE state {

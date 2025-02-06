@@ -20,57 +20,58 @@ Cell Types:
     synapses:
       density: !include PYR_synapse_density.yaml
   PVBC:
-    template: PRN_nrn
-    template file: PRN_nrn.hoc
+    template class: templates.PRN_neuron
     mechanism file: CA1_PVBC_PR_config.yaml
     synapses:
       density: !include PVBC_synapse_density.yaml
   CCKBC:
-    template: PRN_nrn
-    template file: PRN_nrn.hoc
+    template class: templates.PRN_neuron
     mechanism file: CA1_CCKBC_PR_config.yaml
     synapses:
       density: !include CCKBC_synapse_density.yaml
   AAC:
-    template: PRN_nrn
-    template file: PRN_nrn.hoc
+    template class: templates.PRN_neuron
     mechanism file: CA1_AAC_PR_config.yaml
     synapses:
       density: !include AAC_synapse_density.yaml
   BS:
-    template: PRN_nrn
-    template file: PRN_nrn.hoc
+    template class: templates.PRN_neuron
     mechanism file: CA1_BS_PR_config.yaml
     synapses:
       density: !include BS_synapse_density.yaml
   IS1:
-    template: ISCell
+    template class: templates.PR_neuron
+    mechanism file: CA1_IS_PR_config.yaml
     synapses:
       density: !include IS1_synapse_density.yaml
   IS2:
-    template: ISCell
+    template class: templates.PR_neuron
+    mechanism file: CA1_IS_PR_config.yaml
     synapses:
       density: !include IS2_synapse_density.yaml
   IS3:
-    template: ISCell
+    template class: templates.PR_neuron
+    mechanism file: CA1_IS_PR_config.yaml
     synapses:
       density: !include IS3_synapse_density.yaml
   IVY:
-    template: IvyCell
+    template class: templates.PR_neuron
+    mechanism file: CA1_IVY_PR_config.yaml
     synapses:
       density: !include IVY_synapse_density.yaml
   NGFC:
-    template: NGFCell
+    template class: templates.PR_neuron
+    mechanism file: CA1_NGFC_PR_config.yaml
     synapses:
       density: !include NGFC_synapse_density.yaml
   OLM:
-    template: PRN_nrn
-    template file: PRN_nrn.hoc
+    template class: templates.PRN_neuron
     mechanism file: CA1_OLM_PR_config.yaml
     synapses:
       density: !include OLM_synapse_density.yaml
   SCA:
-    template: SCACell
+    template class: templates.PRN_neuron
+    mechanism file: CA1_SCA_PR_config.yaml
     synapses:
       density: !include SCA_synapse_density.yaml
   EC:

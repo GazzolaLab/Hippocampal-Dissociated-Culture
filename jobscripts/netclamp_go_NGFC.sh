@@ -4,7 +4,7 @@ mpirun -n 1 network-clamp go  \
        -c Network_Clamp_NGFC_gid_335030.yaml \
        --template-paths templates --dt 0.01 \
        -p NGFC -g 335030  -t 5000 \
-       --recording-profile "Network clamp inh synaptic" \
+       --recording-profile "Network clamp all synaptic" \
        --dataset-prefix $DATA_PREFIX \
        --config-prefix config \
        --arena-id A --stimulus-id Diag \

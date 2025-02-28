@@ -1,8 +1,12 @@
 from neuron import h
 import numpy as np
 
-class PinskyRinzel:
+class PR:
     def __init__(self, params=None):
+
+        if params is not None:
+            params = params["PinskyRinzel"] 
+       
         self.soma = h.Section(name='soma', cell=self)
         self.dend = h.Section(name='dend', cell=self)
         

@@ -2,32 +2,32 @@ from neuron import h
 import math
 import numpy as np
 
-class TomkoPyramidalCell:
-    def __init__(self):
+class PyramidalCell:
+    def __init__(self, params=None):
         # Create sections
-        self.soma = h.Section(name='soma')
-        self.radTprox1 = h.Section(name='radTprox1')
-        self.radTprox2 = h.Section(name='radTprox2')
-        self.radTmed1 = h.Section(name='radTmed1')
-        self.radTmed2 = h.Section(name='radTmed2')
-        self.radTdist1 = h.Section(name='radTdist1')
-        self.radTdist2 = h.Section(name='radTdist2')
-        self.rad_t1 = h.Section(name='rad_t1')
-        self.rad_t2 = h.Section(name='rad_t2')
-        self.rad_t3 = h.Section(name='rad_t3')
-        self.lm_thick2 = h.Section(name='lm_thick2')
-        self.lm_medium2 = h.Section(name='lm_medium2')
-        self.lm_thin2 = h.Section(name='lm_thin2')
-        self.lm_thick1 = h.Section(name='lm_thick1')
-        self.lm_medium1 = h.Section(name='lm_medium1')
-        self.lm_thin1 = h.Section(name='lm_thin1')
-        self.oriprox1 = h.Section(name='oriprox1')
-        self.oridist1_1 = h.Section(name='oridist1_1')
-        self.oridist1_2 = h.Section(name='oridist1_2')
-        self.oriprox2 = h.Section(name='oriprox2')
-        self.oridist2_1 = h.Section(name='oridist2_1')
-        self.oridist2_2 = h.Section(name='oridist2_2')
-        self.axon = h.Section(name='axon')
+        self.soma = h.Section(name='soma', cell=self)
+        self.radTprox1 = h.Section(name='radTprox1', cell=self)
+        self.radTprox2 = h.Section(name='radTprox2', cell=self)
+        self.radTmed1 = h.Section(name='radTmed1', cell=self)
+        self.radTmed2 = h.Section(name='radTmed2', cell=self)
+        self.radTdist1 = h.Section(name='radTdist1', cell=self)
+        self.radTdist2 = h.Section(name='radTdist2', cell=self)
+        self.rad_t1 = h.Section(name='rad_t1', cell=self)
+        self.rad_t2 = h.Section(name='rad_t2', cell=self)
+        self.rad_t3 = h.Section(name='rad_t3', cell=self)
+        self.lm_thick2 = h.Section(name='lm_thick2', cell=self)
+        self.lm_medium2 = h.Section(name='lm_medium2', cell=self)
+        self.lm_thin2 = h.Section(name='lm_thin2', cell=self)
+        self.lm_thick1 = h.Section(name='lm_thick1', cell=self)
+        self.lm_medium1 = h.Section(name='lm_medium1', cell=self)
+        self.lm_thin1 = h.Section(name='lm_thin1', cell=self)
+        self.oriprox1 = h.Section(name='oriprox1', cell=self)
+        self.oridist1_1 = h.Section(name='oridist1_1', cell=self)
+        self.oridist1_2 = h.Section(name='oridist1_2', cell=self)
+        self.oriprox2 = h.Section(name='oriprox2', cell=self)
+        self.oridist2_1 = h.Section(name='oridist2_1', cell=self)
+        self.oridist2_2 = h.Section(name='oridist2_2', cell=self)
+        self.axon = h.Section(name='axon', cell=self)
 
         # Initialize all the section lists
         self.all = h.SectionList()
@@ -47,6 +47,8 @@ class TomkoPyramidalCell:
         self.ais_SR_list = h.SectionList()
         self.ais_SP_list = h.SectionList()
 
+        self.sections = []
+        
         # Initialize the cell
         self.init()
 
@@ -131,7 +133,8 @@ class TomkoPyramidalCell:
                     self.lm_thin1, self.oriprox1, self.oridist1_1, self.oridist1_2, self.oriprox2,
                     self.oridist2_1, self.oridist2_2, self.axon]:
             self.all.append(sec=sec)
-
+        self.sections = list(self.all)
+            
         # Apical dendrites
         for sec in [self.radTprox1, self.radTprox2, self.radTmed1, self.radTmed2,
                     self.radTdist1, self.radTdist2, self.rad_t1, self.rad_t2, self.rad_t3,
@@ -204,6 +207,7 @@ class TomkoPyramidalCell:
         for sec in [self.rad_t1, self.rad_t2, self.rad_t3]:
             self.oblique_list.append(sec=sec)
 
+            
     def geom(self):
         # Set geometry parameters for all sections
         geom_params = {

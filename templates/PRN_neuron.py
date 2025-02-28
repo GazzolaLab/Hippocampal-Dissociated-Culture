@@ -3,12 +3,18 @@ import numpy as np
 
 class PRN:
     def __init__(self, params=None):
-        self.soma = h.Section(name='soma')
-        self.dend = h.Section(name='dend')
+
+        if params is not None:
+            params = params["PinskyRinzel"]
+
+        self.soma = h.Section(name='soma', cell=self)
+        self.dend = h.Section(name='dend', cell=self)
         
         # Create section lists
         self.sections = h.SectionList()
         self.all = h.SectionList()
+        self.soma_list = h.SectionList()
+        self.apical_list = h.SectionList()
         
         if params is not None:
             self.set_parameters(params)
@@ -20,9 +26,11 @@ class PRN:
         self.biophys()
         
         # Add sections to lists
+        self.soma_list.append(self.soma)
+        self.apical_list.append(self.dend)
         for sec in [self.soma, self.dend]:
-            self.sections.append(sec)
             self.all.append(sec)
+        self.sections = list(self.all)
 
     def set_default_parameters(self):
         self.pp = 0.5  # proportion of area taken up by soma

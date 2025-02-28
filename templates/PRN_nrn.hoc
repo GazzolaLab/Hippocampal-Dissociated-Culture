@@ -2,10 +2,10 @@
 begintemplate PRN_nrn
 
    public soma, dend, sections, all
-   create soma, dend
    public pp, gc, Ltotal
    public init_ic
    objref sections, all
+   create soma[1], dend[1]
    
    func is_art() {return 0}
    func is_reduced() {return 1}
@@ -37,13 +37,18 @@ begintemplate PRN_nrn
        } else {
            parameters() 
        }
+       printf("loaded parameters\n")
        init_topology_0()
+       printf("initialized topology\n")
        geometry()
+       printf("initialized geometry\n")
        biophys()
+       printf("initialized biophys\n")
        all = new SectionList()
        sections = new SectionList()
        soma { sections.append() all.append() }
        dend { sections.append() all.append() }
+       printf("initialized sections\n")
      }
 
 
@@ -101,7 +106,8 @@ proc parameters() {
         
         dend_d_Caconc = 13
         dend_beta_Caconc = 0.075
-        
+
+        global_diam = 10
 	cm = 3
     }
 }

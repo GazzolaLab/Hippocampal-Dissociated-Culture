@@ -67,7 +67,7 @@ Peak Rate:
   CA2:
     constant: 5.0
   EC:
-    constant: 20.0
+    constant: 2.0
     
 
 

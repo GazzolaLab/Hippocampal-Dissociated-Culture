@@ -38,7 +38,7 @@ Synapses:
             g_unit: 0.0001
             weight: 3.057760642471306
           NMDA:
-            g_unit: 0.00005
+            g_unit: 0.00001
             weight: 1.0
         apical:
           AMPA:
@@ -48,7 +48,7 @@ Synapses:
             g_unit: 0.0001
             weight: 3.057760642471306
           NMDA:
-            g_unit: 0.00005
+            g_unit: 0.00001
             weight: 1.0
     EC:
       type: excitatory
@@ -64,7 +64,7 @@ Synapses:
             g_unit: 0.0001
             weight: 0.1
           NMDA:
-            g_unit: 0.00005
+            g_unit: 0.00001
             weight: 1.0
         apical:
           AMPA:

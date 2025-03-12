@@ -56,5 +56,8 @@ ibrun -n 14337 \
     --arena_id=A \
     --stimulus_id=Diag \
     --coordinates_namespace="Generated Coordinates" \
+    --spike_input_namespace='Input Spikes A Diag' \
+    --spike_input_attr='Spike Train' \
+    --spike_input_path="${DATA_PREFIX}/Slice/CA1_Slice_100.h5" \
     --max_walltime_hours=2 \
     --io_size=1

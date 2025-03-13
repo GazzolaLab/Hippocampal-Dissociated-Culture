@@ -40,7 +40,7 @@ distribute.bash ${SCRATCH}/striped2/MiV/MiV_optimize_network
 
 ibrun -n 501 \
     optimize-network \
-    --config-path=./config/optimize_network.yaml \
+    --config-path=./config/optimize_network_test.yaml \
     --optimize-file-dir=$results_path \
     --nprocs-per-worker=250 \
     --n-epochs=2 \

@@ -1,4 +1,4 @@
-/bash
+#!/bin/bash
 #SBATCH -J MiV_optimize_network
 #SBATCH -o ./results/MiV_optimize_network.%j.o
 #SBATCH --nodes=320

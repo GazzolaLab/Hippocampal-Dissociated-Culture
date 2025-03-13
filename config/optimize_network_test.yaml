@@ -1,0 +1,54 @@
+param_config_name: "Weight all"
+objective_names:
+  - PYR firing rate
+  - PYR fraction active
+  - CCKBC firing rate
+  - CCKBC fraction active
+  - BS firing rate
+  - BS fraction active
+  - AAC firing rate
+  - AAC fraction active
+  - PVBC firing rate
+  - PVBC fraction active
+  - IS1 firing rate
+  - IS1 fraction active
+  - IS2 firing rate
+  - IS2 fraction active
+  - IS3 firing rate
+  - IS3 fraction active
+  - OLM firing rate
+  - OLM fraction active
+  - IVY firing rate
+  - IVY fraction active
+  - NGFC firing rate
+  - NGFC fraction active
+  - SCA firing rate
+  - SCA fraction active
+target_populations: 
+  - PYR
+  - CCKBC
+  - BS
+  - AAC
+  - PVBC
+  - IS1
+  - IS2
+  - IS3
+  - OLM
+  - IVY
+  - NGFC
+  - SCA
+kwargs:
+  config: Network_Clamp_Slice_100.yaml
+  tstop: 1750.
+  checkpoint_interval: 0.
+  v_init: -75.
+  dt: 0.025
+  cleanup: False
+  verbose: False
+  cache_queries: True
+  output_results: False
+  use_coreneuron: False
+  use_cell_attr_gen: True
+  microcircuit_inputs: True
+
+  

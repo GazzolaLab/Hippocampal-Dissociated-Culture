@@ -31,21 +31,22 @@ export CDTools=/home1/apps/CDTools/2.0
 
 export PATH=${CDTools}/bin:$PATH
 
-results_path=$SCRATCH/results/optimize_network_$SLURM_JOB_ID
+results_path=$SCRATCH/MiV/results/optimize_network_$SLURM_JOB_ID
 export results_path
 
 mkdir -p ${results_path}
 
 distribute.bash ${SCRATCH}/striped2/MiV/MiV_optimize_network
 
-ibrun -n 449 \
+ibrun -n 501 \
     optimize-network \
     --config-path=./config/optimize_network.yaml \
     --optimize-file-dir=$results_path \
-    --nprocs-per-worker=224 \
+    --nprocs-per-worker=250 \
     --n-epochs=2 \
     --population-size=400 \
     --num-generations=200 \
+    --n-initial=10 \
     --initial-method=slh \
     --mechanisms_path=mechanisms/build \
     --no_cleanup \

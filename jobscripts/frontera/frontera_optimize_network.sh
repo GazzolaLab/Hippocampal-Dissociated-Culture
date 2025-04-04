@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH -J MiV_optimize_network
 #SBATCH -o ./results/MiV_optimize_network.%j.o
-#SBATCH --nodes=320
+#SBATCH --nodes=448
 #SBATCH --ntasks-per-node=56
 #SBATCH -t 24:00:00
 #SBATCH -p normal      # Queue (partition) name
@@ -32,23 +32,28 @@ export CDTools=/home1/apps/CDTools/2.0
 export PATH=${CDTools}/bin:$PATH
 
 results_path=$SCRATCH/MiV/results/optimize_network_$SLURM_JOB_ID
+results_path=$SCRATCH/MiV/results/optimize_network_7006295
+results_file=dmosopt.optimize_network_20250326_2224.h5
 export results_path
+export results_file
 
 mkdir -p ${results_path}
 
 distribute.bash ${SCRATCH}/striped2/MiV/MiV_optimize_network
 
-ibrun -n 17601 \
+ibrun -n 24961 \
     optimize-network \
     --mechanisms-path mechanisms/build \
     --config-path=./config/optimize_network.yaml \
     --optimize-file-dir=$results_path \
-    --nprocs-per-worker=275 \
+    --optimize-file-name=$results_file \
+    --nprocs-per-worker=390 \
     --n-epochs=2 \
     --population-size=400 \
     --num-generations=200 \
     --n-initial=10 \
     --initial-method=slh \
+    --surrogate-method=megp \
     --mechanisms_path=mechanisms/build \
     --no_cleanup \
     --dataset_prefix="$DATA_PREFIX" \
@@ -60,5 +65,5 @@ ibrun -n 17601 \
     --spike_input_namespace='Input Spikes A Diag' \
     --spike_input_attr='Spike Train' \
     --spike_input_path="${DATA_PREFIX}/Slice/CA1_Slice_100.h5" \
-    --max_walltime_hours=2 \
+    --max_walltime_hours=24 \
     --io_size=1

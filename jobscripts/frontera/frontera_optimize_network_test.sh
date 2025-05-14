@@ -52,7 +52,7 @@ ibrun -n 559 \
     --num-generations=200 \
     --n-initial=10 \
     --initial-method=slh \
-    --surrogte-method=megp \
+    --surrogate-method=megp \
     --mechanisms_path=mechanisms/build \
     --no_cleanup \
     --dataset_prefix="$DATA_PREFIX" \

@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH -J MiV_optimize_network
 #SBATCH -o ./results/MiV_optimize_network.%j.o
-#SBATCH --nodes=448
+#SBATCH --nodes=320
 #SBATCH --ntasks-per-node=56
 #SBATCH -t 24:00:00
 #SBATCH -p normal      # Queue (partition) name
@@ -41,13 +41,13 @@ mkdir -p ${results_path}
 
 distribute.bash ${SCRATCH}/striped2/MiV/MiV_optimize_network
 
-ibrun -n 24961 \
+ibrun -n 17857 \
     optimize-network \
     --mechanisms-path mechanisms/build \
     --config-path=./config/optimize_network.yaml \
     --optimize-file-dir=$results_path \
     --optimize-file-name=$results_file \
-    --nprocs-per-worker=390 \
+    --nprocs-per-worker=279 \
     --n-epochs=2 \
     --population-size=400 \
     --num-generations=200 \

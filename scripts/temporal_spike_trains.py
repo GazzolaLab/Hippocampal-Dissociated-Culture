@@ -352,7 +352,7 @@ if __name__ == "__main__":
 
     logging.basicConfig(level=logging.INFO)
 
-    population_name = "CA2"
+    population_name = "PYR"
 
     # np.seterr(all="raise")
     dataset_prefix = "/scratch1/03320/iraikov/striped2/MiV"
@@ -469,18 +469,22 @@ if __name__ == "__main__":
 
     local_times = np.vstack(local_positions)[:, 0]
 
-    for feature in temporal_feature_population.features.values():
-        # Get the activation level from the input filter
-        activation = feature.input_filter(processed_stimulus)
-        local_activations.append(activation)
+    spike_responses = None
+    activations = None
+    positions = None
+    if plot:
+        for feature in temporal_feature_population.features.values():
+            # Get the activation level from the input filter
+            activation = feature.input_filter(processed_stimulus)
+            local_activations.append(activation)
 
-        # Get spike response
-        response = feature.get_response(processed_stimulus)
-        local_spike_responses.append(response)
+            # Get spike response
+            response = feature.get_response(processed_stimulus)
+            local_spike_responses.append(response)
 
-    spike_responses = comm.reduce(local_spike_responses, op=list_concat_op, root=0)
-    activations = comm.reduce(local_activations, op=list_concat_op, root=0)
-    positions = np.array(comm.reduce(local_positions, op=list_concat_op, root=0))
+        spike_responses = comm.reduce(local_spike_responses, op=list_concat_op, root=0)
+        activations = comm.reduce(local_activations, op=list_concat_op, root=0)
+        positions = np.array(comm.reduce(local_positions, op=list_concat_op, root=0))
 
     if plot and (rank == 0):
 
@@ -702,7 +706,7 @@ if __name__ == "__main__":
     comm.barrier()
 
     signal_id = "test_temporal_features_20240510"
-    output_path = os.path.join(output_prefix, "CA2_temporal_input_spike_trains_10s.h5")
+    output_path = os.path.join(output_prefix, "PYR_temporal_input_spike_trains_10s.h5")
 
     if not dry_run:
         generate_input_spike_trains(
@@ -714,11 +718,13 @@ if __name__ == "__main__":
             output_path=output_path,
             output_spikes_namespace="Temporal Feature Spikes",
             output_spike_train_attr_name="Spike Train",
-            io_size=1,
-            write_size=10000,
+            io_size=4,
+            write_size=50000,
             chunk_size=10000,
-            value_chunk_size=100000,
+            value_chunk_size=200000,
         )
+    comm.barrier()
+
 
     # Save the input signal and metadata to the output file on rank 0
     if comm.rank == 0 and not dry_run:

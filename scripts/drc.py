@@ -1,3 +1,4 @@
+import os
 import sys
 import numpy as np
 from typing import Dict, List, Optional, Tuple, Any, Callable, Union
@@ -1002,7 +1003,6 @@ class DynamicalResponsePopulation(InputFeaturePopulation):
             norm_metric_array = metric_array / np.max(metric_array)
             color_values = norm_metric_array
 
-            print(f"metric {metric}: norm_metric_array.shape = {norm_metric_array.shape}")
             scatter = ax.scatter(
                 x_values, y_values, 
                 c=color_values, 
@@ -1673,6 +1673,13 @@ def create_dynamical_response_system(
             "priority": 0.5,  # Lower priority = fewer samples along this dimension
         },
     ]
+
+    start_gid = 0
+    if population_name in env.celltypes:
+        start_gid = env.celltypes[population_name]["start"]
+        n_features = env.celltypes[population_name]["num"]
+    if comm.rank == 0:
+        logger.info(f"start_gid = {start_gid} n_features = {n_features}")
     
     # Create dynamical response population
     population = DynamicalResponsePopulation(
@@ -1691,7 +1698,8 @@ def create_dynamical_response_system(
     )
     
     # Generate features
-    population.generate_features(rank=comm.rank, size=comm.size)
+    population.generate_features(start_gid=start_gid,
+                                 rank=comm.rank, size=comm.size)
     
     # Create time config for encoding
     time_config = EncoderTimeConfig(
@@ -1700,7 +1708,7 @@ def create_dynamical_response_system(
     )
 
     # Determine population id
-    if register_population:
+    if register_population and population not in env.Populations:
         max_pop_enum = 0
         for _, pop_enum in env.Populations.items():
             max_pop_enum = max(pop_enum, max_pop_enum)
@@ -1748,7 +1756,6 @@ def run_dynamical_response_characterization(signal_id,
     rank = comm.rank
     
     # np.seterr(all="raise")
-    config = {}
     params = dict(locals())
     # params["config"] = params.pop("config_file")
     params["Model Name"] = "dynamical_response_features"
@@ -1766,6 +1773,8 @@ def run_dynamical_response_characterization(signal_id,
         random_seed=random_seed,
         register_population=register_population,
     )
+
+    n_features = population.n_features
 
     comm = env.comm
     rank = env.comm.rank
@@ -1796,9 +1805,11 @@ def run_dynamical_response_characterization(signal_id,
     # Add some noise
     stimulus += np.random.normal(0, 0.1, stimulus.shape)
     
+    if output_prefix is not None:
+        output_path = os.path.join(output_prefix, output_path)
 
     if not dry_run:
-        output_spikes_namespace = f"Spatiotemporal Feature Spikes {signal_id}"
+        output_spikes_namespace = f"Spatiotemporal Feature Spikes"
         generate_input_spike_trains(
             env,
             population,
@@ -1880,7 +1891,24 @@ def run_dynamical_response_characterization(signal_id,
     return population, analysis_results, export_data
 
 if __name__ == "__main__":
-    run_dynamical_response_characterization(signal_id = "test_temporal_features_20240510",
-                                             stimulus_duration = 10,
-                                             output_path = "dynamical_response_spike_trains_n150_10s.h5")
+#    run_dynamical_response_characterization(signal_id = "test_temporal_features_20240510",
+#                                             stimulus_duration = 10,
+#                                             output_path = "dynamical_response_spike_trains_n150_10s.h5")
+
+    run_dynamical_response_characterization(signal_id = "drc_features_20240514",
+                                            stimulus_duration = 10,
+                                            population_name = "PYR",
+                                            register_population = False,
+                                            config = "Full_Scale_Dynamic_Response_Features.yaml",
+                                            output_path = "PYR_dynamical_response_spike_trains_10s.h5",
+                                            dataset_prefix = "/scratch1/03320/iraikov/striped2/MiV",
+                                            output_prefix = "/scratch1/03320/iraikov/striped2/MiV/results/livn",
+                                            plot=False,
+                                            io_kwargs={'io_size': 4,
+                                                       'write_size': 50000,
+                                                       'chunk_size': 10000,
+                                                       'value_chunk_size': 100000,
+                                                       }
+                                        )
+
 

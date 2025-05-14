@@ -1,0 +1,89 @@
+## Model configuration of microcircuit network
+Model Name: Full_Scale
+Dataset Name: Full_Scale
+Definitions: !include Definitions.yaml
+Global Parameters: !include Global.yaml
+Geometry: !include Geometry.yaml
+Random Seeds: !include Random.yaml
+Connection Generator: !include Full_Scale_Connections_20240907.yaml
+Cell Data: CA1_Full_Scale.h5
+Connection Data: CA1_Full_Scale.h5
+Recording: !include Recording.yaml
+Stimulus: !include Input_Configuration.yaml
+Analysis: !include Analysis_Configuration.yaml
+Cell Types:
+  PYR:
+    template class: templates.PyramidalCellBilash.PyramidalCell
+    mechanism file: CA1_PYR_Bilash.yaml
+    synapses:
+      density: !include PYR_synapse_density.yaml
+  PVBC:
+    template class: templates.PRN_neuron.PRN
+    mechanism file: CA1_PVBC_PR_config.yaml
+    synapses:
+      density: !include PVBC_synapse_density.yaml
+  CCKBC:
+    template class: templates.PRN_neuron.PRN
+    mechanism file: CA1_CCKBC_PR_config.yaml
+    synapses:
+      density: !include CCKBC_synapse_density.yaml
+  AAC:
+    template class: templates.PRN_neuron.PRN
+    mechanism file: CA1_AAC_PR_config.yaml
+    synapses:
+      density: !include AAC_synapse_density.yaml
+  BS:
+    template class: templates.PRN_neuron.PRN
+    mechanism file: CA1_BS_PR_config.yaml
+    synapses:
+      density: !include BS_synapse_density.yaml
+  IS1:
+    template class: templates.PR_neuron.PR
+    mechanism file: CA1_IS_PR_config.yaml
+    synapses:
+      density: !include IS1_synapse_density.yaml
+  IS2:
+    template class: templates.PR_neuron.PR
+    mechanism file: CA1_IS_PR_config.yaml
+    synapses:
+      density: !include IS2_synapse_density.yaml
+  IS3:
+    template class: templates.PR_neuron.PR
+    mechanism file: CA1_IS_PR_config.yaml
+    synapses:
+      density: !include IS3_synapse_density.yaml
+  IVY:
+    template class: templates.PRN_neuron.PRN
+    mechanism file: CA1_IVY_PR_config.yaml
+    synapses:
+      density: !include IVY_synapse_density.yaml
+  NGFC:
+    template class: templates.PR_neuron.PR
+    mechanism file: CA1_NGFC_PR_config.yaml
+    synapses:
+      density: !include NGFC_synapse_density.yaml
+  OLM:
+    template class: templates.PRN_neuron.PRN
+    mechanism file: CA1_OLM_PR_config.yaml
+    synapses:
+      density: !include OLM_synapse_density.yaml
+  SCA:
+    template class: templates.PRN_neuron.PRN
+    mechanism file: CA1_SCA_PR_config.yaml
+    synapses:
+      density: !include SCA_synapse_density.yaml
+  EC:
+    template: VecStim
+    spike train:
+      namespace: Dynamic Response Feature Spikes test_dynamic_features_20240514
+      attribute: Spike Train
+  CA2:
+    template: VecStim
+    spike train:
+      namespace: Dynamic Response Feature Spikes test_dynamic_features_20240514
+      attribute: Spike Train
+  CA3:
+    template: VecStim
+    spike train:
+      namespace: Dynamic Response Feature Spikes test_dynamic_features_20240514
+      attribute: Spike Train

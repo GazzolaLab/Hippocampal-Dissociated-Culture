@@ -38,7 +38,7 @@ target_populations:
   - NGFC
   - SCA
 kwargs:
-  config: Network_Clamp_Slice_100.yaml
+  config: Network_Clamp_Slice_100_Dynamic_Response_Features.yaml
   tstop: 1750.
   checkpoint_interval: 0.
   v_init: -75.
@@ -47,7 +47,7 @@ kwargs:
   verbose: False
   cache_queries: True
   output_results: False
-  use_coreneuron: False
+  use_coreneuron: True
   use_cell_attr_gen: True
   microcircuit_inputs: True
 

@@ -5,7 +5,7 @@ Definitions: !include Definitions.yaml
 Global Parameters: !include Global.yaml
 Geometry: !include Geometry.yaml
 Random Seeds: !include Random.yaml
-Connection Generator: !include Full_Scale_Connections_20240907.yaml
+Connection Generator: !include Full_Scale_Connections_20250518.yaml
 Cell Data: CA1_Slice_500.h5
 Connection Data: CA1_Slice_500.h5
 Recording: !include Recording.yaml

@@ -276,7 +276,7 @@ Synapses:
         GABA_A:
           tau_rise: 0.08
           tau_decay: 4.8
-          e: -60
+          e: -70
           g_unit: 0.001
           weight: 14.626506551148521
     CCKBC:  
@@ -288,7 +288,7 @@ Synapses:
         GABA_A:
           tau_rise: 0.432
           tau_decay: 4.9
-          e: -60
+          e: -70
           g_unit: 0.001
           weight: 11.103432878455928
     BS:   
@@ -300,7 +300,7 @@ Synapses:
         GABA_A:
           tau_rise: 0.287
           tau_decay: 2.67
-          e: -60
+          e: -70
           g_unit: 0.001
           weight: 5.0
     IVY:
@@ -312,7 +312,7 @@ Synapses:
         GABA_A:
           tau_rise: 2.9
           tau_decay: 3.1
-          e: -60
+          e: -70
           g_unit: 0.001
           weight: 4.864886083311775
     SCA:
@@ -324,7 +324,7 @@ Synapses:
         GABA_A:
           tau_rise: 0.419
           tau_decay: 4.99
-          e: -60
+          e: -70
           g_unit: 0.001
           weight: 19.708102983465295
     NGFC: 
@@ -337,7 +337,7 @@ Synapses:
           GABA_A:
             tau_rise:  8.0
             tau_decay: 39.0
-            e:   -60
+            e:   -70
             g_unit: 0.001
             weight: 19.559943950935764
           GABA_B:
@@ -356,7 +356,7 @@ Synapses:
           GABA_A:
             tau_rise:  0.25
             tau_decay: 7.5
-            e:   -60
+            e:   -70
             g_unit: 0.001
             weight: 11.644119262781706
   PVBC:
@@ -429,7 +429,7 @@ Synapses:
         GABA_A:
           tau_rise: 0.08
           tau_decay: 4.8
-          e: -60
+          e: -70
           g_unit: 0.001
           weight: 16.97729055593787
     CCKBC:  
@@ -441,7 +441,7 @@ Synapses:
         GABA_A:
           tau_rise: 0.432
           tau_decay: 4.9
-          e: -60
+          e: -70
           g_unit: 0.0005
           weight: 17.983925540536834
     BS:   
@@ -453,7 +453,7 @@ Synapses:
         GABA_A:
           tau_rise: 0.287
           tau_decay: 2.67
-          e: -60
+          e: -70
           g_unit: 0.001
           weight: 4.219684170720934
     IVY:
@@ -465,7 +465,7 @@ Synapses:
         GABA_A:
           tau_rise: 2.9
           tau_decay: 3.1
-          e: -60
+          e: -70
           g_unit: 0.001
           weight: 12.231465474609543
     SCA:
@@ -477,7 +477,7 @@ Synapses:
         GABA_A:
           tau_rise: 0.419
           tau_decay: 4.99
-          e: -60
+          e: -70
           g_unit: 0.001
           weight: 16.545645528565796
 
@@ -491,7 +491,7 @@ Synapses:
           GABA_A:
             tau_rise:  8.0
             tau_decay: 39.0
-            e:   -60
+            e:   -70
             g_unit: 0.0005
             weight: 7.808835758737658
           GABA_B:
@@ -510,7 +510,7 @@ Synapses:
           GABA_A:
             tau_rise:  0.25
             tau_decay: 7.5
-            e:   -60
+            e:   -70
             g_unit: 0.0001
             weight: 16.41441589757103
   CCKBC:
@@ -571,7 +571,7 @@ Synapses:
         GABA_A:
           tau_rise: 0.287
           tau_decay: 2.67
-          e: -60
+          e: -70
           g_unit: 0.0005
           weight: 0.3282203662299591
     CCKBC:  
@@ -583,7 +583,7 @@ Synapses:
         GABA_A:
           tau_rise: 0.432
           tau_decay: 4.9
-          e: -60
+          e: -70
           g_unit: 0.001
           weight: 19.03333009880785
     BS:   
@@ -595,7 +595,7 @@ Synapses:
         GABA_A:
           tau_rise: 0.287
           tau_decay: 2.67
-          e: -60
+          e: -70
           g_unit: 0.001
           weight: 5.0
     IVY:
@@ -607,7 +607,7 @@ Synapses:
         GABA_A:
           tau_rise: 2.9
           tau_decay: 3.1
-          e: -60
+          e: -70
           g_unit: 0.001
           weight: 0.2374561206263917
     SCA:
@@ -619,7 +619,7 @@ Synapses:
         GABA_A:
           tau_rise: 0.419
           tau_decay: 4.99
-          e: -60
+          e: -70
           g_unit: 0.001
           weight: 1.782908871497876
     NGFC: 
@@ -632,7 +632,7 @@ Synapses:
           GABA_A:
             tau_rise:  8.0
             tau_decay: 39.0
-            e:   -60
+            e:   -70
             g_unit: 0.001
             weight: 17.153108332752268
           GABA_B:
@@ -650,7 +650,7 @@ Synapses:
         GABA_A:
           tau_rise:  0.72
           tau_decay: 20.20
-          e:   -60
+          e:   -70
           g_unit: 0.001
           weight: 3.8147486875461096
     IS1: 
@@ -662,7 +662,7 @@ Synapses:
         GABA_A:
           tau_rise:  1.1
           tau_decay: 5.0
-          e:   -60
+          e:   -70
           g_unit: 0.0001
           weight: 18.600519027367007
     IS2: 
@@ -674,7 +674,7 @@ Synapses:
         GABA_A:
           tau_rise:  1.1
           tau_decay: 5.0
-          e:   -60
+          e:   -70
           g_unit: 0.0001
           weight: 18.736477085929845
     IS3: 
@@ -686,7 +686,7 @@ Synapses:
         GABA_A:
           tau_rise:  1.1
           tau_decay: 5.0
-          e:   -60
+          e:   -70
           g_unit: 0.0001
           weight: 18.13016788915354
   BS:
@@ -747,7 +747,7 @@ Synapses:
         GABA_A:
           tau_rise: 0.180
           tau_decay: 0.45
-          e: -60
+          e: -70
           g_unit: 0.001
           weight: 17.607140313391138
     CCKBC:  
@@ -759,7 +759,7 @@ Synapses:
         GABA_A:
           tau_rise: 0.432
           tau_decay: 4.9
-          e: -60
+          e: -70
           g_unit: 0.001
           weight: 19.632359390747123
     BS:   
@@ -771,7 +771,7 @@ Synapses:
         GABA_A:
           tau_rise: 0.287
           tau_decay: 2.67
-          e: -60
+          e: -70
           g_unit: 0.001
           weight: 2.1825689462611093
     IVY:
@@ -783,7 +783,7 @@ Synapses:
         GABA_A:
           tau_rise: 2.9
           tau_decay: 3.1
-          e: -60
+          e: -70
           g_unit: 0.001
           weight: 18.13987761854866
     SCA:
@@ -795,7 +795,7 @@ Synapses:
         GABA_A:
           tau_rise: 0.419
           tau_decay: 4.99
-          e: -60
+          e: -70
           g_unit: 0.001
           weight: 2.1653573367459353
 
@@ -808,7 +808,7 @@ Synapses:
           GABA_A:
             tau_rise:  8.0
             tau_decay: 39.0
-            e:   -60
+            e:   -70
             g_unit: 0.001
             weight: 7.092175439146194
           GABA_B:
@@ -826,7 +826,7 @@ Synapses:
           GABA_A:
             tau_rise:  0.60
             tau_decay: 15.0
-            e:   -60
+            e:   -70
             g_unit: 0.001    
             weight: 3.3486421421097736
     IS1: 
@@ -838,7 +838,7 @@ Synapses:
           GABA_A:
             tau_rise:  1.1
             tau_decay: 5.0
-            e:   -60
+            e:   -70
             g_unit: 0.0005
             weight: 2.31261600838629
     IS3: 
@@ -850,7 +850,7 @@ Synapses:
           GABA_A:
             tau_rise:  1.1
             tau_decay: 5.0
-            e:   -60
+            e:   -70
             g_unit: 0.0005
             weight: 1.6479891041112582
   OLM:
@@ -948,7 +948,7 @@ Synapses:
         GABA_A:
           tau_rise: 0.180
           tau_decay: 0.45
-          e: -60
+          e: -70
           g_unit: 0.001
           weight: 18.492006967052273
     CCKBC:  
@@ -960,7 +960,7 @@ Synapses:
         GABA_A:
           tau_rise: 0.432
           tau_decay: 4.9
-          e: -60
+          e: -70
           g_unit: 0.001
           weight: 15.407709899160702
     BS:   
@@ -972,7 +972,7 @@ Synapses:
         GABA_A:
           tau_rise: 0.287
           tau_decay: 2.67
-          e: -60
+          e: -70
           g_unit: 0.0001
           weight: 1.3898758585779143
     IVY:
@@ -984,7 +984,7 @@ Synapses:
         GABA_A:
           tau_rise: 2.9
           tau_decay: 3.1
-          e: -60
+          e: -70
           g_unit: 0.0001
           weight: 5.104418491083397
     SCA:
@@ -996,7 +996,7 @@ Synapses:
         GABA_A:
           tau_rise: 0.419
           tau_decay: 4.99
-          e: -60
+          e: -70
           g_unit: 0.0001
           weight: 17.710590266317737
     NGFC: 
@@ -1008,7 +1008,7 @@ Synapses:
           GABA_A:
             tau_rise:  8.0
             tau_decay: 39.0
-            e:   -60
+            e:   -70
             g_unit: 0.001
             weight: 2.1324659690089276
           GABA_B:
@@ -1027,7 +1027,7 @@ Synapses:
         GABA_A:
             tau_rise:  1.1
             tau_decay: 5.0
-            e:   -60
+            e:   -70
             g_unit: 0.001
             weight: 18.58799572422899
     IS2: 
@@ -1039,7 +1039,7 @@ Synapses:
           GABA_A:
             tau_rise:  1.1
             tau_decay: 5.0
-            e:   -60
+            e:   -70
             g_unit: 0.001
             weight: 0.17873744910817446
 
@@ -1201,7 +1201,7 @@ Synapses:
         GABA_A:
           tau_rise: 0.287
           tau_decay: 2.67
-          e: -60
+          e: -70
           g_unit: 0.001
           weight: 0.455654859652168
     CCKBC:  
@@ -1213,7 +1213,7 @@ Synapses:
         GABA_A:
           tau_rise: 0.432
           tau_decay: 4.9
-          e: -60
+          e: -70
           g_unit: 0.001
           weight: 6.218062954377125
     BS:   
@@ -1225,7 +1225,7 @@ Synapses:
         GABA_A:
           tau_rise: 0.287
           tau_decay: 2.67
-          e: -60
+          e: -70
           g_unit: 0.001
           weight: 5.070348068579499
     IVY:
@@ -1237,7 +1237,7 @@ Synapses:
         GABA_A:
           tau_rise: 2.9
           tau_decay: 3.1
-          e: -60
+          e: -70
           g_unit: 0.001
           weight: 9.745739288267645
     SCA:
@@ -1249,7 +1249,7 @@ Synapses:
         GABA_A:
           tau_rise: 0.419
           tau_decay: 4.99
-          e: -60
+          e: -70
           g_unit: 0.001
           weight: 8.754840786722236
 
@@ -1262,7 +1262,7 @@ Synapses:
         GABA_A:
           tau_rise:  8.0
           tau_decay: 39.0
-          e:   -60
+          e:   -70
           g_unit: 0.001
           weight: 4.673196404431056
         GABA_B:
@@ -1280,7 +1280,7 @@ Synapses:
         GABA_A:
           tau_rise:  0.72
           tau_decay: 20.20
-          e:   -60
+          e:   -70
           g_unit: 0.0001
           weight: 1.4616263588745846
     IS1: 
@@ -1292,7 +1292,7 @@ Synapses:
         GABA_A:
           tau_rise:  1.1
           tau_decay: 5.0
-          e:   -60
+          e:   -70
           g_unit: 0.0001
           weight: 0.25890033039355964
     IS2: 
@@ -1304,7 +1304,7 @@ Synapses:
         GABA_A:
           tau_rise:  1.1
           tau_decay: 5.0
-          e:   -60
+          e:   -70
           g_unit: 0.0001
           weight: 0.7081593980102385
   IS1:
@@ -1356,7 +1356,7 @@ Synapses:
         GABA_A:
           tau_rise: 0.180
           tau_decay: 0.45
-          e: -60
+          e: -70
           g_unit: 0.0002
           weight: 0.2152851432958307
     BS:   
@@ -1368,7 +1368,7 @@ Synapses:
         GABA_A:
           tau_rise: 0.287
           tau_decay: 2.67
-          e: -60
+          e: -70
           g_unit: 0.0002
           weight: 5.0
     IVY:
@@ -1380,7 +1380,7 @@ Synapses:
         GABA_A:
           tau_rise: 2.9
           tau_decay: 3.1
-          e: -60
+          e: -70
           g_unit: 0.0002
           weight: 19.274344940190367
     SCA:
@@ -1392,7 +1392,7 @@ Synapses:
         GABA_A:
           tau_rise: 0.419
           tau_decay: 4.99
-          e: -60
+          e: -70
           g_unit: 0.0002
           weight: 19.99999999225115
     IS1: 
@@ -1404,7 +1404,7 @@ Synapses:
         GABA_A:
           tau_rise:  1.1
           tau_decay: 5.0
-          e:   -60
+          e:   -70
           g_unit: 0.0002
           weight: 12.447985576261328
     IS2: 
@@ -1416,7 +1416,7 @@ Synapses:
         GABA_A:
           tau_rise:  1.1
           tau_decay: 5.0
-          e:   -60
+          e:   -70
           g_unit: 0.0002
           weight: 0.18522125146366297
   IS2:
@@ -1453,7 +1453,7 @@ Synapses:
         GABA_A:
           tau_rise: 0.419
           tau_decay: 4.99
-          e: -60
+          e: -70
           g_unit: 0.001
           weight: 6.590548572179669
     SCA:
@@ -1465,7 +1465,7 @@ Synapses:
         GABA_A:
           tau_rise: 0.419
           tau_decay: 4.99
-          e: -60
+          e: -70
           g_unit: 0.001
           weight: 6.914846498570143
     IS1: 
@@ -1477,7 +1477,7 @@ Synapses:
         GABA_A:
           tau_rise:  1.1
           tau_decay: 5.0
-          e:   -60
+          e:   -70
           g_unit: 0.001
           weight: 6.840102804840577
   IS3:
@@ -1538,7 +1538,7 @@ Synapses:
         GABA_A:
           tau_rise: 0.180
           tau_decay: 0.45
-          e: -60
+          e: -70
           g_unit: 0.001
           weight: 0.4020681894428477
     BS:   
@@ -1550,7 +1550,7 @@ Synapses:
         GABA_A:
           tau_rise: 0.287
           tau_decay: 2.67
-          e: -60
+          e: -70
           g_unit: 0.001
           weight: 5.0
     IVY:
@@ -1562,7 +1562,7 @@ Synapses:
         GABA_A:
           tau_rise: 2.9
           tau_decay: 3.1
-          e: -60
+          e: -70
           g_unit: 0.001
           weight: 1.5466364273190765
     SCA:
@@ -1574,7 +1574,7 @@ Synapses:
         GABA_A:
           tau_rise: 0.419
           tau_decay: 4.99
-          e: -60
+          e: -70
           g_unit: 0.001
           weight: 1.6066526763911801
     NGFC:
@@ -1586,7 +1586,7 @@ Synapses:
         GABA_A:
           tau_rise: 0.419
           tau_decay: 4.99
-          e: -60
+          e: -70
           g_unit: 0.001
           weight: 8.336742454786398
     IS1: 
@@ -1598,7 +1598,7 @@ Synapses:
         GABA_A:
           tau_rise:  1.1
           tau_decay: 5.0
-          e:   -60
+          e:   -70
           g_unit: 0.001
           weight: 2.9249563331161506
     IS2: 
@@ -1610,6 +1610,6 @@ Synapses:
         GABA_A:
           tau_rise:  1.1
           tau_decay: 5.0
-          e:   -60
+          e:   -70
           g_unit: 0.001
           weight: 9.43379003986106

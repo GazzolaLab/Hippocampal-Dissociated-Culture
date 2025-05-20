@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import matplotlib.cm as cm
+import matplotlib as mpl
 from typing import Tuple, List, Callable, Optional
 from miv_simulator.env import Env
 from miv_simulator.input_features import (
@@ -45,7 +46,7 @@ class TemporalModality(InputModality):
         frequency_bounds: Tuple[float, float] = (1, 100),  # Hz
         sample_rate: int = 1000,  # 1kHz default
     ):
-        # Simple 2D feature coordinate system:
+        # 2D feature coordinate system:
         # - time position (when in the signal this feature responds)
         # - frequency preference (what frequency this feature detects)
         feature_coordinate_system = CoordinateSystemConfig(
@@ -100,12 +101,12 @@ class TemporalModality(InputModality):
 
     def create_input_filter(self, position: np.ndarray) -> Callable:
         """Create a temporal input filter based on feature coordinates."""
-        # Extract feature coordinates
+
         time_pos, preferred_freq = position
 
         def frequency_filter(signal: np.ndarray) -> np.ndarray:
             """Apply a frequency filter across the entire signal duration for all channels."""
-            # Handle different input shapes
+
             original_shape = signal.shape
             if len(original_shape) == 1:
                 signal_reshaped = signal.reshape(-1, 1)
@@ -132,7 +133,6 @@ class TemporalModality(InputModality):
             for channel in range(num_channels):
                 channel_signal = signal_reshaped[:, channel]
 
-                # Apply FFT
                 fft_values = rfft(channel_signal)
                 freqs = rfftfreq(len(channel_signal), d=1.0 / self.sample_rate)
 
@@ -208,7 +208,6 @@ class TemporalModality(InputModality):
                 if channel_max > 0:
                     filtered_signal[:, channel] /= channel_max
 
-            # Reshape output to match input
             if len(original_shape) == 1:
                 return filtered_signal.flatten()
 
@@ -343,23 +342,24 @@ sys.excepthook = mpi_excepthook
 
 
 if __name__ == "__main__":
-    dry_run = False
-    plot = False
-    register_population = False
+    dry_run = True
+    plot = True
+    register_population = True
 
     comm = MPI.COMM_WORLD
     rank = comm.rank
 
     logging.basicConfig(level=logging.INFO)
 
-    population_name = "PYR"
+    population_name = "temporal_features"
 
     # np.seterr(all="raise")
-    dataset_prefix = "/scratch1/03320/iraikov/striped2/MiV"
+    #dataset_prefix = "/scratch1/03320/iraikov/striped2/MiV"
     output_prefix = "/scratch1/03320/iraikov/striped2/MiV/results/livn"
+    output_prefix = "."
     config = {}
     params = dict(locals())
-    params["config"] = "Full_Scale_Temporal_Features.yaml"
+    #params["config"] = "Full_Scale_Temporal_Features.yaml"
     params["config_prefix"] = "./config"
     env = Env(**params)
 
@@ -367,7 +367,7 @@ if __name__ == "__main__":
     sample_dt_ms = 1.0
     sample_rate = 1000.0 / sample_dt_ms  # Sample rate [Hz]
     duration = 10.0  # Overall signal duration [s]
-    n_features = 1000  # Number of features in the population
+    n_features = 150  # Number of features in the population
 
     # Create an instance of the temporal modality
     temporal_modality = TemporalModality(
@@ -488,10 +488,23 @@ if __name__ == "__main__":
 
     if plot and (rank == 0):
 
-        # Visualize the results
+        SMALL_SIZE = 14
+        MEDIUM_SIZE = 16
+        BIGGER_SIZE = 18
+        
+        plt.rc('font', size=SMALL_SIZE)
+        plt.rc('axes', titlesize=MEDIUM_SIZE)
+        plt.rc('axes', labelsize=MEDIUM_SIZE)
+        plt.rc('xtick', labelsize=SMALL_SIZE)
+        plt.rc('ytick', labelsize=SMALL_SIZE)
+        plt.rc('legend', fontsize=SMALL_SIZE)
+        plt.rc('figure', titlesize=MEDIUM_SIZE)
+        
+        mpl.rcParams['font.family'] = 'sans-serif'
+        
         # Plot for the input signal
         fig, axs = plt.subplots(
-            3, 1, figsize=(12, 12), gridspec_kw={"height_ratios": [2, 3, 3]}
+            3, 1, figsize=(12, 6), gridspec_kw={"height_ratios": [2, 3, 3]}
         )
 
         # Plot the input signal
@@ -562,7 +575,6 @@ if __name__ == "__main__":
         norm = mcolors.Normalize(vmin=np.min(log_freqs), vmax=np.max(log_freqs))
         cmap = plt.get_cmap("plasma")
 
-        # Create spike raster
         for i, response in enumerate(sorted_responses):
             if isinstance(response, list):
                 # If the response is already spike times, use directly
@@ -590,7 +602,6 @@ if __name__ == "__main__":
                 )
 
         # Create frequency range labels for y-axis
-        # Define frequency bins (can be adjusted based on your needs)
         freq_bins = [1, 5, 10, 20, 40, 100]  # Bin edges
         n_ticks = 6  # Number of tick marks to show
 
@@ -613,7 +624,7 @@ if __name__ == "__main__":
                 tick_pos = np.mean(features_in_bin)
                 tick_positions.append(tick_pos)
 
-                # Create label for this range
+                # label for this range
                 if i == len(freq_bins) - 2:  # Last bin
                     tick_labels.append(f"{freq_bins[i]}-{freq_bins[i + 1]} Hz")
                 else:
@@ -655,7 +666,7 @@ if __name__ == "__main__":
         # Set the colorbar ticks to show actual frequency values instead of log values
         freq_ticks = np.array(
             [1, 5, 10, 20, 40, 100]
-        )  # Choose meaningful frequency values
+        )
         log_freq_ticks = np.log(freq_ticks)
         # Only use ticks that are within the data range
         valid_ticks = freq_ticks[
@@ -666,10 +677,12 @@ if __name__ == "__main__":
         cbar.set_ticks(valid_log_ticks)
         cbar.set_ticklabels([f"{int(f)} Hz" for f in valid_ticks])
 
+        fig.savefig("temporal_input_features.svg", dpi=600, bbox_inches='tight')
+
+        
         plt.tight_layout()
         plt.show()
 
-        # Print a summary of the results
         print("\nFeature Population Summary:")
         print(f"Total features: {len(positions)}")
 
@@ -743,7 +756,6 @@ if __name__ == "__main__":
 
             signal_group.create_dataset("data", data=stimulus, compression="gzip")
 
-            # Save metadata
             signal_group.attrs["duration"] = duration
             signal_group.attrs["sample_rate"] = sample_rate
             signal_group.attrs["sample_dt_ms"] = sample_dt_ms
@@ -755,10 +767,9 @@ if __name__ == "__main__":
             frequencies = np.array([5.0, 10.0, 20.0, 40.0])
             signal_group.create_dataset("frequencies", data=frequencies)
 
-            # Save time points
+            # Save time points and segment information
             signal_group.create_dataset("time", data=t, compression="gzip")
 
-            # Save segment information
             segment_starts = np.array(
                 [0, segment_length, 2 * segment_length, 3 * segment_length]
             )

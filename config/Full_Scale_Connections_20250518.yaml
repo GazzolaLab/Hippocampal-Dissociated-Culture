@@ -867,7 +867,7 @@ Synapses:
           g_unit: 0.00025
           weight: 1.0
         NMDA:
-          g_unit: 0.0005
+          g_unit: 0.0001
           weight: 1.0
     OLM:
       type: inhibitory
@@ -879,7 +879,7 @@ Synapses:
           tau_rise: 0.25
           tau_decay: 7.5
           e: -70
-          g_unit: 0.0005
+          g_unit: 0.00075
           weight: 4.6994924633196575
     IS3:
       type: inhibitory
@@ -892,7 +892,7 @@ Synapses:
           tau_decay: 7.5
           e: -70
           g_unit: 0.0005
-          weight: 1.0
+          weight: 5.0
   IVY:
     CA2:
       type: excitatory

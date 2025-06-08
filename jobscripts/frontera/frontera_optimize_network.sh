@@ -31,9 +31,10 @@ export CDTools=/home1/apps/CDTools/2.0
 
 export PATH=${CDTools}/bin:$PATH
 
-results_path=$SCRATCH/MiV/results/optimize_network_$SLURM_JOB_ID
-#results_path=$SCRATCH/MiV/results/optimize_network_7006295
-#results_file=dmosopt.optimize_network_20250326_2224.h5
+#results_path=$SCRATCH/MiV/results/optimize_network_$SLURM_JOB_ID
+results_path=$SCRATCH/MiV/results/optimize_network_7139526
+results_file=dmosopt.optimize_network_20250531_1824.h5
+ 
 export results_path
 export results_file
 
@@ -46,10 +47,11 @@ ibrun -n 17857 \
     --mechanisms-path mechanisms/build \
     --config-path=./config/optimize_network.yaml \
     --optimize-file-dir=$results_path \
+   --optimize-file-name=$results_file \
     --nprocs-per-worker=279 \
-    --n-epochs=2 \
+    --n-epochs=4 \
     --population-size=400 \
-    --num-generations=200 \
+    --num-generations=400 \
     --n-initial=10 \
     --initial-method=slh \
     --surrogate-method=megp \

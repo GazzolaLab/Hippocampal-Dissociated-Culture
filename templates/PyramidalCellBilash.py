@@ -411,7 +411,7 @@ class PyramidalCell:
         h.finitialize(v_init)
         for sec in self.soma_list:
             for seg in sec:
-                seg.constant.ic += -(seg.ina + seg.ik + seg.ica + seg.h.ih + seg.pas.i)
+                seg.constant.ic += -(seg.ina + seg.ik + seg.ica + seg.h_mech.ih + seg.pas.i)
         for sec in self.ais_list:
             for seg in sec:
                 seg.constant.ic += -(seg.ina + seg.ik + seg.pas.i)
@@ -423,10 +423,10 @@ class PyramidalCell:
                 seg.constant.ic += -(seg.ina + seg.ik + seg.pas.i)
         for sec in self.apical_list:
             for seg in sec:
-                seg.constant.ic += -(seg.ina + seg.ik + seg.ica + seg.ica + seg.h.ih + seg.pas.i)
+                seg.constant.ic += -(seg.ina + seg.ik + seg.ica + seg.ica + seg.h_mech.ih + seg.pas.i)
         for sec in self.basal_list:
             for seg in sec:
-                seg.constant.ic += -(seg.ina + seg.ik + seg.ica + seg.h.ih + seg.pas.i)
+                seg.constant.ic += -(seg.ina + seg.ik + seg.ica + seg.h_mech.ih + seg.pas.i)
 
         
     def topol(self):
@@ -666,7 +666,7 @@ class PyramidalCell:
                                    
         for sec in self.soma_list:
             sec.insert('hha2')
-            sec.insert('h')
+            sec.insert('h_mech')
             sec.insert('kap')
             sec.insert('km')
             sec.insert('mAHP')
@@ -690,7 +690,7 @@ class PyramidalCell:
         # Apical trunk -- all compartments
         for sec in self.trunk_list:
             sec.insert('hhadend')
-            sec.insert('h')
+            sec.insert('h_mech')
             if sec.name().__contains__('radTprox'):
                 sec.insert('kap')
             else:
@@ -705,7 +705,7 @@ class PyramidalCell:
         # Apical tuft (SLM)
         for sec in self.tuft_list:
             sec.insert('hhadend')
-            sec.insert('h')
+            sec.insert('h_mech')
             sec.insert('kad')
             sec.insert('km')
             sec.insert('kca')
@@ -715,7 +715,7 @@ class PyramidalCell:
         # Apical oblique (SR)
         for sec in self.oblique_list:
             sec.insert('hhadend')
-            sec.insert('h')
+            sec.insert('h_mech')
             sec.insert('kad')
             sec.insert('km')
             sec.insert('mAHP')
@@ -725,7 +725,7 @@ class PyramidalCell:
         # Basal dendrites
         for sec in self.basal_list:
             sec.insert('hhadend')
-            sec.insert('h')
+            sec.insert('h_mech')
             sec.insert('kap')
             sec.insert('km')
             sec.insert('kca')
@@ -746,9 +746,9 @@ class PyramidalCell:
                 seg.km.gbar = self.params.soma.gbar_km
                 seg.mAHP.gkbar = self.params.soma.gkahp
                 seg.kca.gbar = self.params.soma.gkca
-                seg.h.ghbar = self.params.soma.gh
-                seg.h.vhalf = -90
-                seg.h.eh = self.params.soma.eh
+                seg.h_mech.ghbar = self.params.soma.gh
+                seg.h_mech.vhalf = -90
+                seg.h_mech.eh = self.params.soma.eh
                 seg.cat.gcatbar = self.params.soma.gcat
                 seg.cal.gcalbar = self.params.soma.gcal
                 seg.carsoma.gcabar = self.params.soma.gcar
@@ -812,9 +812,9 @@ class PyramidalCell:
                 seg.hhadend.gnabar = params.gbar_na
                 seg.hhadend.gkbar = params.gkdr
                 seg.hhadend.ar2 = params.ar2_na
-                seg.h.ghbar = params.gh
-                seg.h.vhalf = -90
-                seg.h.eh = params.eh
+                seg.h_mech.ghbar = params.gh
+                seg.h_mech.vhalf = -90
+                seg.h_mech.eh = params.eh
                 if sec.name().__contains__('radTprox'):
                     seg.kap.gkabar = params.gka
                 else:
@@ -841,9 +841,9 @@ class PyramidalCell:
                 seg.hhadend.gnabar = self.params.apical_tuft.gbar_na
                 seg.hhadend.gkbar = self.params.apical_tuft.gkdr
                 seg.hhadend.ar2 = self.params.apical_tuft.ar2_na
-                seg.h.ghbar = self.params.apical_tuft.gh
-                seg.h.vhalf = -90
-                seg.h.eh = self.params.apical_tuft.eh
+                seg.h_mech.ghbar = self.params.apical_tuft.gh
+                seg.h_mech.vhalf = -90
+                seg.h_mech.eh = self.params.apical_tuft.eh
                 seg.kad.gkabar = self.params.apical_tuft.gka_dist
                 seg.km.gbar = self.params.apical_tuft.gbar_km
 
@@ -868,9 +868,9 @@ class PyramidalCell:
                 seg.hhadend.gnabar = self.params.apical_oblique.gbar_na
                 seg.hhadend.gkbar = self.params.apical_oblique.gkdr
                 seg.hhadend.ar2 = self.params.apical_oblique.ar2_na
-                seg.h.ghbar = self.params.apical_oblique.gh
-                seg.h.vhalf = -90
-                seg.h.eh = self.params.apical_oblique.eh
+                seg.h_mech.ghbar = self.params.apical_oblique.gh
+                seg.h_mech.vhalf = -90
+                seg.h_mech.eh = self.params.apical_oblique.eh
                 seg.kad.gkabar = self.params.apical_oblique.gka_dist
                 seg.km.gbar = self.params.apical_oblique.gbar_km
                 
@@ -894,9 +894,9 @@ class PyramidalCell:
                 seg.hhadend.gnabar = self.params.basal.gbar_na
                 seg.hhadend.gkbar = self.params.basal.gkdr
                 seg.hhadend.ar2 = self.params.basal.ar2_na
-                seg.h.ghbar = self.params.basal.gh
-                seg.h.vhalf = -90
-                seg.h.eh = self.params.basal.eh
+                seg.h_mech.ghbar = self.params.basal.gh
+                seg.h_mech.vhalf = -90
+                seg.h_mech.eh = self.params.basal.eh
                 seg.kap.gkabar = self.params.basal.gka_prox
                 seg.km.gbar = self.params.basal.gbar_km
                 

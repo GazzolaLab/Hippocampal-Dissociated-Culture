@@ -1,0 +1,98 @@
+Parametric Surface:
+  Origin:
+    U: median
+    V: median
+    L: max
+  Layer Extents:
+    SO: [[0.0, 0.0, 0.0], [400.0, 400.0, 100.0]]
+    SP: [[0.0, 0.0, 100.0], [400.0, 400.0, 150.0]]
+    SR: [[0.0, 0.0, 150.0], [400.0, 400.0, 350.0]]
+    SLM: [[0.0, 0.0, 350.0], [400.0, 400.0, 450.0]]
+  Rotation: [0.0, 0.0, 0.0]
+Cell Constraints:
+  PYR:
+    SP: [100., 150.] # Lee, ..., Soltesz. Neuron 2014
+  PVBC:
+    SR: [150., 200.0] # Booker, Vida. Cell & Tissue Research 2018
+  CCKBC:
+    SLM: [350.0, 370.0] # Vida, ..., Buhl. J. Physiology 1998
+  AAC:
+    SO: [80.0, 100.0] # Baude, ..., Klausberger Cerebral Cortex 2007
+  SCA:
+    SR: [330.0, 350.0] # Vida, ..., Buhl. J. Physiology 1998
+Cell Distribution:
+  PYR:
+    SO: 0
+    SP: 45
+    SR: 0
+    SLM: 0
+  PVBC: #5530 -> 2
+    SO: 0
+    SP: 10
+    SR: 0
+    SLM: 0
+  AAC: #1380 -> 1
+    SO: 0
+    SP: 10
+    SR: 0
+    SLM: 0
+  BS: #2210 -> 1
+    SO: 0
+    SP: 10
+    SR: 0
+    SLM: 0
+  CCKBC: # 3600 -> 2
+    SO: 0
+    SP: 0
+    SR: 10
+    SLM: 2
+  IVY: # 8810 -> 3
+    SO: 0
+    SP: 2
+    SR: 10
+    SLM: 0
+  NGFC: #3580 -> 2
+    SO: 0
+    SP: 0
+    SR: 0
+    SLM: 10
+  OLM: #1640 -> 1
+    SO: 10
+    SP: 0
+    SR: 0
+    SLM: 0
+  SCA: #400 -> 1
+    SO: 0
+    SP: 0
+    SR: 10
+    SLM: 0
+  IS1: #4250 -> 2
+    SO: 0
+    SP: 10
+    SR: 0
+    SLM: 10
+  IS2: #1970 -> 1
+    SO: 0
+    SP: 0
+    SR: 0
+    SLM: 15
+  IS3: #1250 -> 1
+    SO: 0
+    SP: 15
+    SR: 0
+    SLM: 0
+  CA3:
+    SO: 0
+    SP: 0
+    SR: 30
+    SLM: 0
+  CA2:
+    SO: 15
+    SP: 0
+    SR: 0
+    SLM: 0
+  EC:
+    SO: 0
+    SP: 0
+    SR: 0
+    SLM: 36

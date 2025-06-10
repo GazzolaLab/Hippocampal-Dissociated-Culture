@@ -6,7 +6,7 @@ Based on Magee, 1988, J Neurosci, 18:7613-7624, doi: 10.1523/JNEUROSCI.18-19-076
 ENDCOMMENT
 
 NEURON {
-	SUFFIX h
+	SUFFIX h_mech
 	NONSPECIFIC_CURRENT ih
 	RANGE  ghbar, vhalf, eh, ih
 }

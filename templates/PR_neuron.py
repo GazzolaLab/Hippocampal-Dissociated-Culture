@@ -134,6 +134,8 @@ class PR:
         # Soma-specific parameters
         self.soma.cm = self.global_cm * self.cm_ratio
         
+        self.soma.insert('extracellular')
+        
         self.soma.insert('pas')
         self.soma.insert('constant')
         self.soma.insert('Na_PR')

@@ -9,12 +9,13 @@ from typing import Dict, Any, Type, TypeVar, Optional
 from typing_extensions import get_type_hints
 import yaml
 
-T = TypeVar('T')
+T = TypeVar("T")
 
-def create_from_dict(cls: Type[T], data: Dict[str, Any], missing='error') -> T:
+
+def create_from_dict(cls: Type[T], data: Dict[str, Any], missing="error") -> T:
     """
     Create a dataclass instance from a dictionary, handling nested dataclasses.
-    
+
     Args:
         cls: The dataclass type to create
         data: Dictionary containing parameter values
@@ -24,7 +25,7 @@ def create_from_dict(cls: Type[T], data: Dict[str, Any], missing='error') -> T:
 
     Returns:
         Instance of the dataclass populated with values from the dictionary
-    
+
     Raises:
         ValueError: If required parameters are missing or values can't be converted
     """
@@ -33,19 +34,19 @@ def create_from_dict(cls: Type[T], data: Dict[str, Any], missing='error') -> T:
 
     field_types = get_type_hints(cls)
     kwargs = {}
-    
+
     for field_name, field_type in field_types.items():
         # Skip if field not in data and has default value
         if field_name not in data and hasattr(cls, field_name):
-            if missing == 'error':
+            if missing == "error":
                 raise RuntimeError(f"field {field_name} not found in dictionary")
             else:
                 continue
-            
+
         value = data.get(field_name)
-        
+
         # Handle nested dataclasses
-        if hasattr(field_type, '__dataclass_fields__'):
+        if hasattr(field_type, "__dataclass_fields__"):
             nested_data = value if value else {}
             kwargs[field_name] = create_from_dict(field_type, nested_data)
         else:
@@ -53,123 +54,131 @@ def create_from_dict(cls: Type[T], data: Dict[str, Any], missing='error') -> T:
                 try:
                     kwargs[field_name] = field_type(value)
                 except (ValueError, TypeError) as e:
-                    raise ValueError(f"Cannot convert value '{value}' to {field_type} for parameter '{field_name}': {str(e)}")
+                    raise ValueError(
+                        f"Cannot convert value '{value}' to {field_type} for parameter '{field_name}': {str(e)}"
+                    )
 
     return cls(**kwargs)
 
+
 @dataclass
 class SomaParameters:
-    g_pas: float =  5e-8  # S/cm2
-    e_pas: float =  -70  # mV
-    gbar_na: float =  3.5e-2  # S/cm2
-    gkdr: float =  1.4e-3  # S/cm2
-    gka_prox: float =  7.5e-3  # S/cm2
-    gbar_km: float =  1.66e-2  # S/cm2
-    gh: float =  1.5e-5  # S/cm2
-    eh: float =  -30  # mV
-    gcal: float =  7e-3  # S/cm2
-    gcar: float =  3e-3  # S/cm2
-    gcat: float =  5e-5  # S/cm2
-    gkca: float =  9.075e-2  # S/cm2
-    gkahp: float =  5e-4  # S/cm2
-    cm: float =  1.0  # µF/cm2
-    Ra: float =  300  # Ohm cm
-    ic: float = 0.0 # mA/cm2
-    
+    g_pas: float = 5e-8  # S/cm2
+    e_pas: float = -70  # mV
+    gbar_na: float = 3.5e-2  # S/cm2
+    gkdr: float = 1.4e-3  # S/cm2
+    gka_prox: float = 7.5e-3  # S/cm2
+    gbar_km: float = 1.66e-2  # S/cm2
+    gh: float = 1.5e-5  # S/cm2
+    eh: float = -30  # mV
+    gcal: float = 7e-3  # S/cm2
+    gcar: float = 3e-3  # S/cm2
+    gcat: float = 5e-5  # S/cm2
+    gkca: float = 9.075e-2  # S/cm2
+    gkahp: float = 5e-4  # S/cm2
+    cm: float = 1.0  # µF/cm2
+    Ra: float = 300  # Ohm cm
+    ic: float = 0.0  # mA/cm2
+
+
 @dataclass
 class AxonParameters:
-    g_pas: float =  5e-8
-    e_pas: float =  -70  # mV
-    gbar_na: float =  1.5e0
-    gkdr: float =  1e-1
-    gbar_km: float =  3e-6
-    cm: float =  1.0
-    Ra: float =  300
-    ic: float = 0.0 # mA/cm2
+    g_pas: float = 5e-8
+    e_pas: float = -70  # mV
+    gbar_na: float = 1.5e0
+    gkdr: float = 1e-1
+    gbar_km: float = 3e-6
+    cm: float = 1.0
+    Ra: float = 300
+    ic: float = 0.0  # mA/cm2
 
-    
+
 @dataclass
 class AISParameters:
-    g_pas: float =  5e-8
-    e_pas: float =  -70  # mV
-    gbar_na: float =  1.5e0
-    gkdr: float =  1e-1
-    gbar_km: float =  3e-6
-    cm: float =  1.0
-    Ra: float =  300
-    ic: float = 0.0 # mA/cm2
-    
+    g_pas: float = 5e-8
+    e_pas: float = -70  # mV
+    gbar_na: float = 1.5e0
+    gkdr: float = 1e-1
+    gbar_km: float = 3e-6
+    cm: float = 1.0
+    Ra: float = 300
+    ic: float = 0.0  # mA/cm2
+
+
 @dataclass
 class HillockParameters:
-    g_pas: float =  5e-8
-    e_pas: float =  -70  # mV
-    gbar_na: float =  1.5e0
-    gkdr: float =  1e-1
-    gbar_km: float =  3e-6
-    cm: float =  1.0
-    Ra: float =  300
-    ic: float = 0.0 # mA/cm2
+    g_pas: float = 5e-8
+    e_pas: float = -70  # mV
+    gbar_na: float = 1.5e0
+    gkdr: float = 1e-1
+    gbar_km: float = 3e-6
+    cm: float = 1.0
+    Ra: float = 300
+    ic: float = 0.0  # mA/cm2
+
 
 @dataclass
 class ApicalTrunkParameters:
-    g_pas: float =  5.26e-8
-    e_pas: float =  -70  # mV
-    gbar_na: float =  1.4e-2
+    g_pas: float = 5.26e-8
+    e_pas: float = -70  # mV
+    gbar_na: float = 1.4e-2
     ar2_na: float = 0.9
-    gkdr: float =  1.74e-3
-    gka: float =  1.8e-3
-    gbar_km: float =  6e-4
-    gh: float =  1.8e-5
-    eh: float =  -30  # mV
-    gcal: float =  3.16e-6
-    gcar: float =  3e-4
-    gcat: float =  4e-4
-    gkca: float =  6.6e-3
-    gkahp: float =  5e-4
-    cm: float =  2.2
-    Ra: float =  285
-    ic: float = 0.0 # mA/cm2
+    gkdr: float = 1.74e-3
+    gka: float = 1.8e-3
+    gbar_km: float = 6e-4
+    gh: float = 1.8e-5
+    eh: float = -30  # mV
+    gcal: float = 3.16e-6
+    gcar: float = 3e-4
+    gcat: float = 4e-4
+    gkca: float = 6.6e-3
+    gkahp: float = 5e-4
+    cm: float = 2.2
+    Ra: float = 285
+    ic: float = 0.0  # mA/cm2
 
-    
+
 @dataclass
 class ApicalParameters:
-    g_pas: float =  8.3e-7
-    e_pas: float =  -70  # mV
-    gbar_na: float =  1.5e-3
+    g_pas: float = 8.3e-7
+    e_pas: float = -70  # mV
+    gbar_na: float = 1.5e-3
     ar2_na: float = 0.95
-    gkdr: float =  1.9e-4
-    gka_dist: float =  4.86e-2
-    gbar_km: float =  1.2e-3
-    gh: float =  1.2e-4
-    eh: float =  -30  # mV
-    gcal: float =  3.16e-6
-    gkca: float =  4.125e-3
-    gkahp: float =  5e-5
-    cm: float =  3.0
-    Ra: float =  150
-    ic: float = 0.0 # mA/cm2
+    gkdr: float = 1.9e-4
+    gka_dist: float = 4.86e-2
+    gbar_km: float = 1.2e-3
+    gh: float = 1.2e-4
+    eh: float = -30  # mV
+    gcal: float = 3.16e-6
+    gkca: float = 4.125e-3
+    gkahp: float = 5e-5
+    cm: float = 3.0
+    Ra: float = 150
+    ic: float = 0.0  # mA/cm2
+
 
 @dataclass
 class BasalParameters:
     g_pas: float = 5.55e-7
-    e_pas: float =  -70  # mV
+    e_pas: float = -70  # mV
     gbar_na: float = 7e-3
     ar2_na: float = 1.0
     gkdr: float = 8.6e-4
     gka_prox: float = 7.5e-3
     gbar_km: float = 6e-4
     gh: float = 1.5e-5
-    eh: float =  -30  # mV
+    eh: float = -30  # mV
     gkca: float = 1.65e-2
     gkahp: float = 5e-4
     cm: float = 3.0
     Ra: float = 150
-    ic: float = 0.0 # mA/cm2
+    ic: float = 0.0  # mA/cm2
 
-    
+
 @dataclass
 class NeuronParameters:
     """Complete set of parameters for all compartments of the neuron model."""
+
     soma: SomaParameters = field(default_factory=SomaParameters)
     axon: AxonParameters = field(default_factory=AxonParameters)
     ais: AISParameters = field(default_factory=AISParameters)
@@ -182,16 +191,16 @@ class NeuronParameters:
     basal: BasalParameters = field(default_factory=BasalParameters)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'NeuronParameters':
+    def from_dict(cls, data: Dict[str, Any]) -> "NeuronParameters":
         """
         Create a NeuronParameters instance from a dictionary.
-        
+
         Args:
             data: Dictionary containing parameter values organized by compartment
-            
+
         Returns:
             NeuronParameters instance with values from the dictionary
-            
+
         Example:
             params = NeuronParameters.from_dict({
                 'soma': {'gkabar_kap': 0.008, 'gbar_kmb': 0.002},
@@ -203,14 +212,14 @@ class NeuronParameters:
     def to_dict(self) -> Dict[str, Any]:
         """
         Convert the NeuronParameters instance to a dictionary.
-        
+
         Returns:
             Dictionary containing all parameter values organized by compartment
         """
         result = {}
         for field in fields(self):
             value = getattr(self, field.name)
-            if hasattr(value, '__dataclass_fields__'):
+            if hasattr(value, "__dataclass_fields__"):
                 result[field.name] = {
                     nested_field.name: getattr(value, nested_field.name)
                     for nested_field in fields(value)
@@ -222,10 +231,10 @@ class NeuronParameters:
     def update_from_dict(self, data: Dict[str, Any]) -> None:
         """
         Update parameters from a dictionary without creating a new instance.
-        
+
         Args:
             data: Dictionary containing parameter values to update
-            
+
         Example:
             params.update_from_dict({
                 'soma': {'gkabar_kap': 0.008},
@@ -237,36 +246,36 @@ class NeuronParameters:
             setattr(self, field.name, getattr(new_params, field.name))
 
     @classmethod
-    def from_yaml(cls, yaml_path: Path | str) -> 'NeuronParameters':
+    def from_yaml(cls, yaml_path: Path | str) -> "NeuronParameters":
         """
         Create a NeuronParameters instance from a YAML file.
-        
+
         Args:
             yaml_path: Path to the YAML file
-            
+
         Returns:
             NeuronParameters instance with values from the YAML file
-            
+
         Raises:
             yaml.YAMLError: If YAML parsing fails
             FileNotFoundError: If the file doesn't exist
         """
         yaml_path = Path(yaml_path)
-        with yaml_path.open('r') as f:
+        with yaml_path.open("r") as f:
             data = yaml.safe_load(f)
         return cls.from_dict(data)
 
     @classmethod
-    def from_yaml_string(cls, yaml_string: str) -> 'NeuronParameters':
+    def from_yaml_string(cls, yaml_string: str) -> "NeuronParameters":
         """
         Create a NeuronParameters instance from a YAML string.
-        
+
         Args:
             yaml_string: String containing YAML data
-            
+
         Returns:
             NeuronParameters instance with values from the YAML string
-            
+
         Raises:
             yaml.YAMLError: If YAML parsing fails
         """
@@ -276,44 +285,44 @@ class NeuronParameters:
     def to_yaml(self, yaml_path: Path | str, **kwargs) -> None:
         """
         Save parameters to a YAML file.
-        
+
         Args:
             yaml_path: Path where to save the YAML file
             **kwargs: Additional arguments passed to yaml.dump()
-            
+
         Default kwargs include:
             default_flow_style=False (for better readability)
             sort_keys=False (to maintain parameter order)
         """
         yaml_path = Path(yaml_path)
         data = self.to_dict()
-        
+
         # Default YAML formatting options
-        kwargs.setdefault('default_flow_style', False)
-        kwargs.setdefault('sort_keys', False)
-        
-        with yaml_path.open('w') as f:
+        kwargs.setdefault("default_flow_style", False)
+        kwargs.setdefault("sort_keys", False)
+
+        with yaml_path.open("w") as f:
             yaml.dump(data, f, **kwargs)
 
     def to_yaml_string(self, **kwargs) -> str:
         """
         Convert parameters to a YAML string.
-        
+
         Args:
             **kwargs: Additional arguments passed to yaml.dump()
-            
+
         Returns:
             String containing YAML representation of parameters
         """
         data = self.to_dict()
-        kwargs.setdefault('default_flow_style', False)
-        kwargs.setdefault('sort_keys', False)
+        kwargs.setdefault("default_flow_style", False)
+        kwargs.setdefault("sort_keys", False)
         return yaml.dump(data, **kwargs)
 
     def apply_to_model(self, model):
         """
         Apply all parameters to the given model instance.
-        
+
         Args:
             model: The neuron model instance to apply parameters to
         """
@@ -322,7 +331,7 @@ class NeuronParameters:
                 full_param_name = f"{compartment_name}_{param_name}"
                 setattr(model, full_param_name, value)
 
-    
+
 class PyramidalCell:
     def __init__(self, params=None):
 
@@ -330,39 +339,39 @@ class PyramidalCell:
         self.set_default_parameters()
         if params is not None:
             self.set_parameters(params)
-        
+
         # Create sections
-        self.soma = h.Section(name='soma', cell=self)
-        self.radTprox = h.Section(name='radTprox', cell=self)
-        self.radTmed = h.Section(name='radTmed', cell=self)
-        self.radTdist1 = h.Section(name='radTdist1', cell=self)
-        self.radTdist2 = h.Section(name='radTdist2', cell=self)
-        self.radTdist3 = h.Section(name='radTdist3', cell=self)
-        self.lm_thick1 = h.Section(name='lm_thick1', cell=self)
-        self.lm_medium1 = h.Section(name='lm_medium1', cell=self)
-        self.lm_thin1a = h.Section(name='lm_thin1a', cell=self)
-        self.lm_thin1b = h.Section(name='lm_thin1b', cell=self)
-        self.lm_thick2 = h.Section(name='lm_thick2', cell=self)
-        self.lm_medium2 = h.Section(name='lm_medium2', cell=self)
-        self.lm_thin2a = h.Section(name='lm_thin2a', cell=self)
-        self.lm_thin2b = h.Section(name='lm_thin2b', cell=self)
-        self.rad_thick1 = h.Section(name='rad_thick1', cell=self)
-        self.rad_medium1 = h.Section(name='rad_medium1', cell=self)
-        self.rad_thin1a = h.Section(name='rad_thin1a', cell=self)
-        self.rad_thin1b = h.Section(name='rad_thin1b', cell=self)
-        self.rad_thick2 = h.Section(name='rad_thick2', cell=self)
-        self.rad_medium2 = h.Section(name='rad_medium2', cell=self)
-        self.rad_thin2a = h.Section(name='rad_thin2a', cell=self)
-        self.rad_thin2b = h.Section(name='rad_thin2b', cell=self)
-        self.oriprox1 = h.Section(name='oriprox1', cell=self)
-        self.oridist1a = h.Section(name='oridist1a', cell=self)
-        self.oridist1b = h.Section(name='oridist1b', cell=self)
-        self.oriprox2 = h.Section(name='oriprox2', cell=self)
-        self.oridist2a = h.Section(name='oridist2a', cell=self)
-        self.oridist2b = h.Section(name='oridist2b', cell=self)
-        self.axon = h.Section(name='axon', cell=self)
-        self.hillock = h.Section(name='hillock', cell=self)
-        self.ais = h.Section(name='ais', cell=self)
+        self.soma = h.Section(name="soma", cell=self)
+        self.radTprox = h.Section(name="radTprox", cell=self)
+        self.radTmed = h.Section(name="radTmed", cell=self)
+        self.radTdist1 = h.Section(name="radTdist1", cell=self)
+        self.radTdist2 = h.Section(name="radTdist2", cell=self)
+        self.radTdist3 = h.Section(name="radTdist3", cell=self)
+        self.lm_thick1 = h.Section(name="lm_thick1", cell=self)
+        self.lm_medium1 = h.Section(name="lm_medium1", cell=self)
+        self.lm_thin1a = h.Section(name="lm_thin1a", cell=self)
+        self.lm_thin1b = h.Section(name="lm_thin1b", cell=self)
+        self.lm_thick2 = h.Section(name="lm_thick2", cell=self)
+        self.lm_medium2 = h.Section(name="lm_medium2", cell=self)
+        self.lm_thin2a = h.Section(name="lm_thin2a", cell=self)
+        self.lm_thin2b = h.Section(name="lm_thin2b", cell=self)
+        self.rad_thick1 = h.Section(name="rad_thick1", cell=self)
+        self.rad_medium1 = h.Section(name="rad_medium1", cell=self)
+        self.rad_thin1a = h.Section(name="rad_thin1a", cell=self)
+        self.rad_thin1b = h.Section(name="rad_thin1b", cell=self)
+        self.rad_thick2 = h.Section(name="rad_thick2", cell=self)
+        self.rad_medium2 = h.Section(name="rad_medium2", cell=self)
+        self.rad_thin2a = h.Section(name="rad_thin2a", cell=self)
+        self.rad_thin2b = h.Section(name="rad_thin2b", cell=self)
+        self.oriprox1 = h.Section(name="oriprox1", cell=self)
+        self.oridist1a = h.Section(name="oridist1a", cell=self)
+        self.oridist1b = h.Section(name="oridist1b", cell=self)
+        self.oriprox2 = h.Section(name="oriprox2", cell=self)
+        self.oridist2a = h.Section(name="oridist2a", cell=self)
+        self.oridist2b = h.Section(name="oridist2b", cell=self)
+        self.axon = h.Section(name="axon", cell=self)
+        self.hillock = h.Section(name="hillock", cell=self)
+        self.ais = h.Section(name="ais", cell=self)
 
         # Initialize all the section lists
         self.all = h.SectionList()
@@ -388,7 +397,6 @@ class PyramidalCell:
         # Initialize the cell
         self.init()
 
-
     def set_default_parameters(self):
 
         self.params = NeuronParameters()
@@ -397,21 +405,23 @@ class PyramidalCell:
 
         # Update existing instance
         self.params.update_from_dict(params)
-    
+
         self.params.apply_to_model(self)
-        
+
     def init(self):
         self.topol()
         self.subsets()
         self.geom()
         self.geom_nseg()
         self.biophys()
-    
+
     def init_ic(self, v_init):
         h.finitialize(v_init)
         for sec in self.soma_list:
             for seg in sec:
-                seg.constant.ic += -(seg.ina + seg.ik + seg.ica + seg.h_mech.ih + seg.pas.i)
+                seg.constant.ic += -(
+                    seg.ina + seg.ik + seg.ica + seg.h_mech.ih + seg.pas.i
+                )
         for sec in self.ais_list:
             for seg in sec:
                 seg.constant.ic += -(seg.ina + seg.ik + seg.pas.i)
@@ -423,12 +433,15 @@ class PyramidalCell:
                 seg.constant.ic += -(seg.ina + seg.ik + seg.pas.i)
         for sec in self.apical_list:
             for seg in sec:
-                seg.constant.ic += -(seg.ina + seg.ik + seg.ica + seg.ica + seg.h_mech.ih + seg.pas.i)
+                seg.constant.ic += -(
+                    seg.ina + seg.ik + seg.ica + seg.ica + seg.h_mech.ih + seg.pas.i
+                )
         for sec in self.basal_list:
             for seg in sec:
-                seg.constant.ic += -(seg.ina + seg.ik + seg.ica + seg.h_mech.ih + seg.pas.i)
+                seg.constant.ic += -(
+                    seg.ina + seg.ik + seg.ica + seg.h_mech.ih + seg.pas.i
+                )
 
-        
     def topol(self):
         # Connect sections
         self.radTprox.connect(self.soma(1))
@@ -488,7 +501,7 @@ class PyramidalCell:
 
         # Add sections to specific lists with indices
         section_index = 0
-        
+
         # Soma
         self.soma_list.append(sec=self.soma)
         self.soma_SP_list.append(sec=self.soma)
@@ -496,49 +509,84 @@ class PyramidalCell:
         section_index += 1
 
         # Apical dendrites
-        for sec in [self.radTprox, self.radTmed, 
-                    self.radTdist1, self.radTdist2, self.radTdist3]:
+        for sec in [
+            self.radTprox,
+            self.radTmed,
+            self.radTdist1,
+            self.radTdist2,
+            self.radTdist3,
+        ]:
             self.apical_list.append(sec=sec)
             self.trunk_list.append(sec=sec)
             section_index += 1
-            
+
         # SR sections
-        for sec in [self.rad_thick1, self.rad_medium1,
-                    self.rad_thin1a, self.rad_thin1b,
-                    self.rad_thick2, self.rad_medium2,
-                    self.rad_thin2a, self.rad_thin2b]:
+        for sec in [
+            self.rad_thick1,
+            self.rad_medium1,
+            self.rad_thin1a,
+            self.rad_thin1b,
+            self.rad_thick2,
+            self.rad_medium2,
+            self.rad_thin2a,
+            self.rad_thin2b,
+        ]:
             self.apical_list.append(sec=sec)
             self.apical_SR_list.append(sec=sec)
             self.apical_SR_index.append(section_index)
             section_index += 1
 
         # SLM sections
-        for sec in [self.lm_thick1, self.lm_medium1,
-                    self.lm_thin1a, self.lm_thin1b,
-                    self.lm_thick2, self.lm_medium2,
-                    self.lm_thin2a, self.lm_thin2b]:                  
+        for sec in [
+            self.lm_thick1,
+            self.lm_medium1,
+            self.lm_thin1a,
+            self.lm_thin1b,
+            self.lm_thick2,
+            self.lm_medium2,
+            self.lm_thin2a,
+            self.lm_thin2b,
+        ]:
             self.apical_list.append(sec=sec)
             self.apical_SLM_list.append(sec=sec)
             self.apical_SLM_index.append(section_index)
             section_index += 1
 
         # Tuft list
-        for sec in [self.lm_thick1, self.lm_medium1,
-                    self.lm_thin1a, self.lm_thin1b,
-                    self.lm_thick2, self.lm_medium2,
-                    self.lm_thin2a, self.lm_thin2b]:                  
+        for sec in [
+            self.lm_thick1,
+            self.lm_medium1,
+            self.lm_thin1a,
+            self.lm_thin1b,
+            self.lm_thick2,
+            self.lm_medium2,
+            self.lm_thin2a,
+            self.lm_thin2b,
+        ]:
             self.tuft_list.append(sec=sec)
-            
+
         # Oblique list
-        for sec in [self.rad_thick1, self.rad_medium1,
-                    self.rad_thin1a, self.rad_thin1b,
-                    self.rad_thick2, self.rad_medium2,
-                    self.rad_thin2a, self.rad_thin2b]:
+        for sec in [
+            self.rad_thick1,
+            self.rad_medium1,
+            self.rad_thin1a,
+            self.rad_thin1b,
+            self.rad_thick2,
+            self.rad_medium2,
+            self.rad_thin2a,
+            self.rad_thin2b,
+        ]:
             self.oblique_list.append(sec=sec)
 
         # Basal dendrites
-        for sec in [self.oriprox1, self.oridist1a, self.oridist1b,
-                    self.oriprox2, self.oridist2a, self.oridist2b]:
+        for sec in [
+            self.oriprox1,
+            self.oridist1a,
+            self.oridist1b,
+            self.oriprox2,
+            self.oridist2a,
+            self.oridist2b,
+        ]:
             self.basal_list.append(sec=sec)
             self.basal_SO_list.append(sec=sec)
             self.basal_SO_index.append(section_index)
@@ -565,9 +613,9 @@ class PyramidalCell:
     def geom(self):
         # Set geometry parameters for all sections
         geom_params = {
-            self.soma:      (10, 20),
-            self.radTprox:  (80, (3, 2.5)),
-            self.radTmed:   (70, 2.5),
+            self.soma: (10, 20),
+            self.radTprox: (80, (3, 2.5)),
+            self.radTmed: (70, 2.5),
             self.radTdist1: (50, 2.0),
             self.radTdist2: (50, 1.75),
             self.radTdist3: (50, 1.5),
@@ -579,26 +627,23 @@ class PyramidalCell:
             self.lm_medium2: (50, 0.9),
             self.lm_thin2a: (75, 0.6),
             self.lm_thin2b: (75, 0.6),
-
-            self.rad_thick1:  (50, 1.9),
+            self.rad_thick1: (50, 1.9),
             self.rad_medium1: (50, 1.5),
-            self.rad_thin1a:  (75, 0.95),
-            self.rad_thin1b:  (75, 0.95),
-            self.rad_thick2:  (50, 1.9),
+            self.rad_thin1a: (75, 0.95),
+            self.rad_thin1b: (75, 0.95),
+            self.rad_thick2: (50, 1.9),
             self.rad_medium2: (50, 1.5),
-            self.rad_thin2a:  (75, 0.95),
-            self.rad_thin2b:  (75, 0.95),
-
+            self.rad_thin2a: (75, 0.95),
+            self.rad_thin2b: (75, 0.95),
             self.oriprox1: (75, 1.6),
             self.oridist1a: (75, 1.1),
             self.oridist1b: (75, 1.1),
             self.oriprox2: (75, 1.6),
             self.oridist2a: (75, 1.1),
             self.oridist2b: (75, 1.1),
-            
             self.hillock: (20, (3.5, 1.0)),
             self.ais: (10, (1.0, 1.0)),
-            self.axon: (150, (0.5, 0.5))
+            self.axon: (150, (0.5, 0.5)),
         }
 
         for sec, (L, diam) in geom_params.items():
@@ -609,32 +654,36 @@ class PyramidalCell:
                     nseg = nseg + 1
                 sec.nseg = nseg
                 for seg in sec:
-                    seg.diam = np.interp(seg.x, [0, 1], [diam[0], diam[1]])  
+                    seg.diam = np.interp(seg.x, [0, 1], [diam[0], diam[1]])
             else:
                 sec.diam = diam
         h.define_shape()
-                
+
     def geom_nseg(self, freq=100, d_lambda=0.1):
         for sec in self.all:
-            nseg = int((sec.L/(d_lambda*self.lambda_f(sec, freq))+0.9)/2)*2 + 1
+            nseg = (
+                int((sec.L / (d_lambda * self.lambda_f(sec, freq)) + 0.9) / 2) * 2 + 1
+            )
             sec.nseg = nseg
 
     def lambda_f(self, section, freq):
         if section.n3d() < 2:
-            return 1e5 * np.sqrt(section.diam/(4*np.pi*freq*section.Ra*section.cm))
-        
+            return 1e5 * np.sqrt(
+                section.diam / (4 * np.pi * freq * section.Ra * section.cm)
+            )
+
         x1 = section.arc3d(0)
         d1 = section.diam3d(0)
         lam = 0
-        
+
         for i in range(1, section.n3d()):
             x2 = section.arc3d(i)
             d2 = section.diam3d(i)
-            lam += (x2 - x1)/np.sqrt(d1 + d2)
+            lam += (x2 - x1) / np.sqrt(d1 + d2)
             x1, d1 = x2, d2
-            
-        lam *= np.sqrt(2) * 1e-5*np.sqrt(4*np.pi*freq*section.Ra*section.cm)
-        return section.L/lam
+
+        lam *= np.sqrt(2) * 1e-5 * np.sqrt(4 * np.pi * freq * section.Ra * section.cm)
+        return section.L / lam
 
     def distribute_distance(self, section_list, mechanism, expression):
         """
@@ -645,11 +694,13 @@ class PyramidalCell:
         expression: Expression for calculating values based on distance
         """
         h.distance(0, 0.5, sec=self.soma)  # Set soma as the origin
-                                   
+
         for sec in section_list:
             for seg in sec:
                 dist = h.distance(seg.x, sec=sec)
-                mech_val = eval(expression % dist)  # Evaluate the expression with the distance
+                mech_val = eval(
+                    expression % dist
+                )  # Evaluate the expression with the distance
                 setattr(seg, mechanism, mech_val)
 
     def biophys(self):
@@ -658,83 +709,85 @@ class PyramidalCell:
         h.celsius = 35
 
         for sec in self.all:
-            sec.insert('pas')
-            sec.insert('cad')
-            sec.insert('K_conc')
-            sec.insert('Na_conc')
-            sec.insert('constant')
-                                   
+            sec.insert("pas")
+            sec.insert("cad")
+            sec.insert("K_conc")
+            sec.insert("Na_conc")
+            sec.insert("constant")
+
         for sec in self.soma_list:
-            sec.insert('hha2')
-            sec.insert('h_mech')
-            sec.insert('kap')
-            sec.insert('km')
-            sec.insert('mAHP')
-            sec.insert('kca')
-            sec.insert('cal')
-            sec.insert('cat')
-            sec.insert('carsoma')
+            sec.insert("extracellular")
+
+            sec.insert("hha2")
+            sec.insert("h_mech")
+            sec.insert("kap")
+            sec.insert("km")
+            sec.insert("mAHP")
+            sec.insert("kca")
+            sec.insert("cal")
+            sec.insert("cat")
+            sec.insert("carsoma")
 
         for sec in self.axon_list:
-            sec.insert('hha2')
-            sec.insert('km')
-            
+            sec.insert("hha2")
+            sec.insert("km")
+
         for sec in self.ais_list:
-            sec.insert('hha2')
-            sec.insert('km')
-            
+            sec.insert("hha2")
+            sec.insert("km")
+
         for sec in self.hillock_list:
-            sec.insert('hha2')
-            sec.insert('km')
-                                   
+            sec.insert("hha2")
+            sec.insert("km")
+
         # Apical trunk -- all compartments
         for sec in self.trunk_list:
-            sec.insert('hhadend')
-            sec.insert('h_mech')
-            if sec.name().__contains__('radTprox'):
-                sec.insert('kap')
+            sec.insert("hhadend")
+            sec.insert("h_mech")
+            if sec.name().__contains__("radTprox"):
+                sec.insert("kap")
             else:
-                sec.insert('kad')
-            sec.insert('km')
-            sec.insert('kca')
-            sec.insert('mAHP')
-            sec.insert('caldend')
-            sec.insert('cat')
-            sec.insert('car')
-            
+                sec.insert("kad")
+            sec.insert("km")
+            sec.insert("kca")
+            sec.insert("mAHP")
+            sec.insert("caldend")
+            sec.insert("cat")
+            sec.insert("car")
+
         # Apical tuft (SLM)
         for sec in self.tuft_list:
-            sec.insert('hhadend')
-            sec.insert('h_mech')
-            sec.insert('kad')
-            sec.insert('km')
-            sec.insert('kca')
-            sec.insert('mAHP')
-            sec.insert('caldend')
-        
+            sec.insert("hhadend")
+            sec.insert("h_mech")
+            sec.insert("kad")
+            sec.insert("km")
+            sec.insert("kca")
+            sec.insert("mAHP")
+            sec.insert("caldend")
+
         # Apical oblique (SR)
         for sec in self.oblique_list:
-            sec.insert('hhadend')
-            sec.insert('h_mech')
-            sec.insert('kad')
-            sec.insert('km')
-            sec.insert('mAHP')
-            sec.insert('kca')
-            sec.insert('caldend')
-            
+            sec.insert("hhadend")
+            sec.insert("h_mech")
+            sec.insert("kad")
+            sec.insert("km")
+            sec.insert("mAHP")
+            sec.insert("kca")
+            sec.insert("caldend")
+
         # Basal dendrites
         for sec in self.basal_list:
-            sec.insert('hhadend')
-            sec.insert('h_mech')
-            sec.insert('kap')
-            sec.insert('km')
-            sec.insert('kca')
-            sec.insert('mAHP')
+            sec.insert("hhadend")
+            sec.insert("h_mech")
+            sec.insert("kap")
+            sec.insert("km")
+            sec.insert("kca")
+            sec.insert("mAHP")
 
         # Set parameters for all sections
         for sec in self.all:
             sec.nai0_Na_conc = 10
-            
+
         # Parameters for soma
         for sec in self.soma_list:
             sec.Ra = self.params.soma.Ra
@@ -755,7 +808,7 @@ class PyramidalCell:
                 seg.g_pas = self.params.soma.g_pas
                 seg.e_pas = self.params.soma.e_pas
                 seg.constant.ic = self.params.soma.ic
-                
+
         # Parameters for hillock
         for sec in self.hillock_list:
             sec.Ra = self.params.hillock.Ra
@@ -767,7 +820,7 @@ class PyramidalCell:
                 seg.g_pas = self.params.hillock.g_pas
                 seg.e_pas = self.params.hillock.e_pas
                 seg.constant.ic = self.params.hillock.ic
-            
+
         # Parameters for AIS
         for sec in self.ais_list:
             sec.Ra = self.params.ais.Ra
@@ -795,15 +848,15 @@ class PyramidalCell:
         # Parameters for apical dendrites
         # Apical trunk
         for sec in self.trunk_list:
-            if sec.name().__contains__('radTprox'):
+            if sec.name().__contains__("radTprox"):
                 params = self.params.radTprox
-            elif sec.name().__contains__('radTmed'):
+            elif sec.name().__contains__("radTmed"):
                 params = self.params.radTmed
-            elif sec.name().__contains__('radTdist'):
+            elif sec.name().__contains__("radTdist"):
                 params = self.params.radTdist
             else:
                 raise RuntimeException(f"Unknown apical trunk section {sec}")
-            
+
             sec.Ra = params.Ra
             sec.cm = params.cm  # Membrane capacitance in uF/cm2
             for seg in sec:
@@ -815,7 +868,7 @@ class PyramidalCell:
                 seg.h_mech.ghbar = params.gh
                 seg.h_mech.vhalf = -90
                 seg.h_mech.eh = params.eh
-                if sec.name().__contains__('radTprox'):
+                if sec.name().__contains__("radTprox"):
                     seg.kap.gkabar = params.gka
                 else:
                     seg.kad.gkabar = params.gka
@@ -830,7 +883,7 @@ class PyramidalCell:
                 # R-type Ca2+ channel
                 seg.car.gcabar = params.gcar
                 seg.constant.ic = params.ic
-                
+
         # Apical tuft
         for sec in self.tuft_list:
             sec.Ra = self.params.apical_tuft.Ra
@@ -849,14 +902,13 @@ class PyramidalCell:
 
                 # medium Ca2+-dependent K+ channel (mAHP)
                 seg.mAHP.gkbar = self.params.apical_tuft.gkahp
-                
+
                 # slow Ca2+-dependent K+ channel (sAHP)
                 seg.kca.gbar = self.params.apical_tuft.gkca
-                
+
                 # L-type Ca2+ channels
                 seg.caldend.gcalbar = self.params.apical_tuft.gcal
                 seg.constant.ic = self.params.apical_tuft.ic
-
 
         # Apical oblique dendrites
         for sec in self.oblique_list:
@@ -873,17 +925,17 @@ class PyramidalCell:
                 seg.h_mech.eh = self.params.apical_oblique.eh
                 seg.kad.gkabar = self.params.apical_oblique.gka_dist
                 seg.km.gbar = self.params.apical_oblique.gbar_km
-                
+
                 # medium Ca2+-dependent K+ channel (mAHP)
                 seg.mAHP.gkbar = self.params.apical_oblique.gkahp
-                
+
                 # slow Ca2+-dependent K+ channel (sAHP)
                 seg.kca.gbar = self.params.apical_oblique.gkca
-                
+
                 # L-type Ca2+ channels
                 seg.caldend.gcalbar = self.params.apical_oblique.gcal
                 seg.constant.ic = self.params.apical_oblique.ic
-                
+
         # Basal dendrites
         for sec in self.basal_list:
             sec.Ra = self.params.basal.Ra
@@ -899,16 +951,25 @@ class PyramidalCell:
                 seg.h_mech.eh = self.params.basal.eh
                 seg.kap.gkabar = self.params.basal.gka_prox
                 seg.km.gbar = self.params.basal.gbar_km
-                
+
                 # medium Ca2+-dependent K+ channel (mAHP)
                 seg.mAHP.gkbar = self.params.basal.gkahp
-                
+
                 # slow Ca2+-dependent K+ channel (sAHP)
                 seg.kca.gbar = self.params.basal.gkca
                 seg.constant.ic = self.params.basal.ic
 
-
-    def export_swc(self, sections=[("soma",1),("apical",4),("basal",3),("axon",2),("ais",7),("hillock",8)]):
+    def export_swc(
+        self,
+        sections=[
+            ("soma", 1),
+            ("apical", 4),
+            ("basal", 3),
+            ("axon", 2),
+            ("ais", 7),
+            ("hillock", 8),
+        ],
+    ):
         swc_point_idx = 0
         swc_points = []
         swc_point_sec_dict = defaultdict(list)
@@ -918,7 +979,7 @@ class PyramidalCell:
             if hasattr(self, f"{section}_list"):
                 seclist = list(getattr(self, f"{section}_list"))
                 for secidx, sec in enumerate(seclist):
-                    if hasattr(sec, 'sec'):
+                    if hasattr(sec, "sec"):
                         sec = sec.sec
                     if sec in seen:
                         continue
@@ -934,10 +995,10 @@ class PyramidalCell:
                         y2 = sec.y3d(1)
                         z2 = sec.z3d(1)
                         d2 = sec.diam3d(1)
-                        mx = (x2 + x1) / 2.
-                        my = (y2 + y1) / 2.
-                        mz = (z2 + z1) / 2.
-                        dd = d1 - (d1 - d2)/2.
+                        mx = (x2 + x1) / 2.0
+                        my = (y2 + y1) / 2.0
+                        mz = (z2 + z1) / 2.0
+                        dd = d1 - (d1 - d2) / 2.0
                         sec.pt3dinsert(1, mx, my, mz, dd)
                         n3d = sec.n3d()
                     L = sec.L
@@ -947,10 +1008,21 @@ class PyramidalCell:
                         z = sec.z3d(i)
                         d = sec.diam3d(i)
                         ll = sec.arc3d(i)
-                        rad = d / 2.
+                        rad = d / 2.0
                         loc = ll / L
                         first = True if i == 0 else False
-                        swc_point = (swc_point_idx, section, sectype, x, y, z, rad, loc, sec, first)
+                        swc_point = (
+                            swc_point_idx,
+                            section,
+                            sectype,
+                            x,
+                            y,
+                            z,
+                            rad,
+                            loc,
+                            sec,
+                            first,
+                        )
                         swc_points.append(swc_point)
                         swc_point_sec_dict[sec.name()].append(swc_point)
                         swc_point_idx += 1
@@ -960,7 +1032,7 @@ class PyramidalCell:
             parent_idx = -1
             distance_to_soma = h.distance(soma_sec(0.5), sec(loc))
             if not first:
-                parent_idx = swc_point_idx-1
+                parent_idx = swc_point_idx - 1
             else:
                 parent_seg = sec.parentseg()
                 if parent_seg is not None:
@@ -968,23 +1040,29 @@ class PyramidalCell:
                     parent_sec = parent_seg.sec
                     parent_points = swc_point_sec_dict[parent_sec.name()]
                     for parent_point in parent_points:
-                        (parent_point_idx, _, _, _, _, _, _, parent_point_loc, _, _) = parent_point
+                        (parent_point_idx, _, _, _, _, _, _, parent_point_loc, _, _) = (
+                            parent_point
+                        )
                         if parent_point_loc >= parent_x:
                             parent_idx = parent_point_idx
                             break
-            #layer = get_layer(distance_to_soma, sectype)
-            print("%d %i %.04f %.04f %.04f %.04f %d" % (swc_point_idx, sectype, x, y, z, rad, parent_idx))
+            # layer = get_layer(distance_to_soma, sectype)
+            print(
+                "%d %i %.04f %.04f %.04f %.04f %d"
+                % (swc_point_idx, sectype, x, y, z, rad, parent_idx)
+            )
 
-        
     def position(self, x, y, z):
         xx = yy = zz = 0
         for sec in [self.soma, self.dend]:
             for i in range(sec.n3d()):
-                pt3d = h.pt3dchange(i, 
-                                  x - xx + sec.x3d(i),
-                                  y - yy + sec.y3d(i),
-                                  z - zz + sec.z3d(i),
-                                  sec.diam3d(i))
+                pt3d = h.pt3dchange(
+                    i,
+                    x - xx + sec.x3d(i),
+                    y - yy + sec.y3d(i),
+                    z - zz + sec.z3d(i),
+                    sec.diam3d(i),
+                )
         xx, yy, zz = x, y, z
 
     def is_art(self):
@@ -1052,7 +1130,7 @@ def ic_constant_f(
             vec_v = h.Vector()
             vec_v.record(cell.soma(0.5)._ref_v, record_dt)  # Voltage
             vec_v_dict[sec] = vec_v
-        
+
     # Run the simulation
     h.tstop = tstop
     h.v_init = v_hold
@@ -1081,10 +1159,10 @@ def ic_constant_f(
         mean_vs.append(mean_v)
 
     mean_v = np.mean(np.asarray(mean_vs))
-    
+
     return mean_v - v_hold
-    
-if __name__ == '__main__':
+
+
+if __name__ == "__main__":
     cell = PyramidalCell()
     cell.export_swc()
-    

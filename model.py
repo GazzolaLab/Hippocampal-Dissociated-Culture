@@ -82,19 +82,12 @@ class HippocampalDissociatedCulture(Model):
         }
 
     def neuron_noise_mechanism(self, section):
-        from neuron import h
+        return None, None
 
-        return h.Gfluct3(section), None
-
-    def neuron_noise_configure(self, population, mechanism, state, level):
-        mechanism.on = 1 if level > 0 else 0
-
-        if population == "PYR":
-            mechanism.std_e = 0.0030 * level
-            mechanism.std_i = 0
-        else:
-            mechanism.std_e = 0
-            mechanism.std_i = 0.0066 * level
+    def neuron_noise_configure(
+        self, population, mechanism, state, exc_level, inh_level
+    ):
+        pass
 
     def neuron_default_noise(self, system: str, key: int = 0):
         return {"exc": 0.0, "inh": 0.0}

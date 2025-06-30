@@ -125,13 +125,13 @@ class PRN:
         # Soma-specific parameters
         self.soma.cm = self.global_cm * self.cm_ratio
         
-        self.soma.insert('extracellular')
+        #self.soma.insert('extracellular')
         
         self.soma.insert('pas')
         self.soma.insert('constant')
         self.soma.insert('Na_PR')
         self.soma.insert('K_PR')
-        self.soma.insert('Na_conc_PR')
+        self.soma.insert('Na_conc')
         self.soma.insert('K_conc_PR')
         
         self.soma.gmax_Na_PR = self.soma_gmax_Na

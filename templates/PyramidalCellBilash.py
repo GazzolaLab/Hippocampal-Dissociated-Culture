@@ -334,7 +334,6 @@ class NeuronParameters:
 
 class PyramidalCell:
     def __init__(self, params=None):
-
         # Initialize parameters
         self.set_default_parameters()
         if params is not None:
@@ -398,11 +397,9 @@ class PyramidalCell:
         self.init()
 
     def set_default_parameters(self):
-
         self.params = NeuronParameters()
 
     def set_parameters(self, params):
-
         # Update existing instance
         self.params.update_from_dict(params)
 
@@ -716,7 +713,7 @@ class PyramidalCell:
             sec.insert("constant")
 
         for sec in self.soma_list:
-            sec.insert("extracellular")
+            # sec.insert("extracellular")
 
             sec.insert("hha2")
             sec.insert("h_mech")
@@ -1101,7 +1098,6 @@ def ic_constant_f(
     use_cvode=True,
     use_coreneuron=True,
 ):
-
     h.cvode.use_fast_imem(1)
     h.cvode.cache_efficient(1)
     h.secondorder = 2

@@ -47,7 +47,7 @@ kwargs:
   verbose: False
   cache_queries: True
   output_results: False
-  use_coreneuron: True
+  use_coreneuron: False
   use_cell_attr_gen: True
   microcircuit_inputs: True
 

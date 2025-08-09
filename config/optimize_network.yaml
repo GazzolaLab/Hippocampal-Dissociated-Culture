@@ -38,7 +38,7 @@ target_populations:
   - NGFC
   - SCA
 kwargs:
-  config: Network_Clamp_Slice_100_Dynamic_Response_Features.yaml
+  config: C5.yaml
   tstop: 9750.
   checkpoint_interval: 0.
   v_init: -75.

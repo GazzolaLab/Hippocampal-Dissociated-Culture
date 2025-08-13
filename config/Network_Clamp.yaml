@@ -66,7 +66,7 @@ Synaptic Optimization:
         v:
           threshold: -43.1
           margin: 2.0
-      firing rate: 10.0
+      firing rate: 9.0 # CCK+ data from Klausberger et al. J Neurosci 2005 
       fraction active: 0.9
     Parameter ranges:
       Weight all:
@@ -134,7 +134,7 @@ Synaptic Optimization:
         v:
           threshold: -43.1
           margin: 2.0
-      firing rate: 18.0
+      firing rate: 18.0 # mean PV+ FR in Allen Neuropixels data
       fraction active: 0.9
     Parameter ranges:
       Weight all:
@@ -199,7 +199,7 @@ Synaptic Optimization:
         v:
           threshold: -43.1
           margin: 2.0
-      firing rate: 18.0
+      firing rate: 18.0 # mean PV+ FR in Allen Neuropixels data
       fraction active: 0.9
     Parameter ranges:
       Weight all:
@@ -263,7 +263,7 @@ Synaptic Optimization:
         v:
           threshold: -43.1
           margin: 2.0
-      firing rate: 18.0
+      firing rate: 18.0 # mean PV+ FR in Allen Neuropixels data
       fraction active: 0.9
     Parameter ranges:
       Weight all:
@@ -327,7 +327,7 @@ Synaptic Optimization:
         v:
           threshold: -43.1
           margin: 2.0
-      firing rate: 17.0
+      firing rate: 17.0 # mean VIP+ FR in Allen Neuropixels data
       fraction active: 0.9
     Parameter ranges:
       Weight all:
@@ -375,7 +375,7 @@ Synaptic Optimization:
         v:
           threshold: -43.1
           margin: 2.0
-      firing rate: 17.0
+      firing rate: 17.0 # mean VIP+ FR in Allen Neuropixels data
       fraction active: 0.9
     Parameter ranges:
       Weight all:
@@ -406,7 +406,7 @@ Synaptic Optimization:
         v:
           threshold: -43.1
           margin: 2.0
-      firing rate: 17.0
+      firing rate: 17.0 # mean VIP+ FR in Allen Neuropixels data
       fraction active: 0.9
     Parameter ranges:
       Weight all:
@@ -460,7 +460,7 @@ Synaptic Optimization:
         v:
           threshold: -43.1
           margin: 2.0
-      firing rate: 13.0
+      firing rate: 13.0 # mean SST+ FR in Allen Neuropixels data
       fraction active: 0.9
     Parameter ranges:
       Weight all:
@@ -482,7 +482,7 @@ Synaptic Optimization:
         v:
           threshold: -43.1
           margin: 2.0
-      firing rate: 3.0
+      firing rate: 3.0 # Table 6 in Bezaire et al. 2016
       fraction active: 0.9
     Parameter ranges:
       Weight all:
@@ -544,7 +544,7 @@ Synaptic Optimization:
         v:
           threshold: -43.1
           margin: 2.0
-      firing rate: 10.0
+      firing rate: 7.4 # Sakalar et al. Science 2022
       fraction active: 0.9
     Parameter ranges:
       Weight all:
@@ -588,7 +588,7 @@ Synaptic Optimization:
         v:
           threshold: -43.1
           margin: 2.0
-      firing rate: 5.0
+      firing rate: 9.0 # CCK+ data from Klausberger et al. J Neurosci 2005 
       fraction active: 0.9
     Parameter ranges:
       Weight all:

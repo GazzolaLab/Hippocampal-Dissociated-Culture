@@ -25,28 +25,28 @@ def ewma_linear_filter(array, alpha):
 INTERNEURON_FI_PARAMS = {
     'PV': {
         'threshold': 0.2,        # Normalized input threshold (0-1)
-        'slope': 30.0,            # Firing rate gain (Hz per normalized input unit)
+        'slope': 80.0,           # Firing rate gain (Hz per normalized input unit)
         'max_rate': 150.0,       # Saturation firing rate (Hz)
         'circuit_type': 'feedforward',  # Primary circuit role
         'description': 'Parvalbumin-positive fast-spiking interneurons'
     },
     'SST': {
         'threshold': 0.15,       # Lower threshold
-        'slope': 15.0,            # Gentler slope  
+        'slope': 60.0,           # Gentler slope  
         'max_rate': 80.0,        # Lower max rate
         'circuit_type': 'feedback',
         'description': 'Somatostatin-positive interneurons'
     },
     'VIP': {
         'threshold': 0.18,
-        'slope': 20.0,
+        'slope': 30.0,
         'max_rate': 100.0,
         'circuit_type': 'feedforward',
         'description': 'Vasoactive intestinal peptide interneurons'
     },
     'CCK': {
         'threshold': 0.12,
-        'slope': 20.0,
+        'slope': 30.0,
         'max_rate': 90.0,
         'circuit_type': 'feedback',
         'description': 'Cholecystokinin-positive interneurons'

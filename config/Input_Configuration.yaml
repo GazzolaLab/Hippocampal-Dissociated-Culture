@@ -51,6 +51,32 @@ Mean Response:
       std fraction active per time bin: 0.225
 
     
+# Physiologically-grounded f-I parameters for interneuron types
+f-I Parameters:
+    PV: 
+        threshold: 0.2        # Normalized input threshold (0-1)
+        slope: 80.0           # Firing rate gain (Hz per normalized input unit)
+        max_rate: 150.0       # Saturation firing rate (Hz)
+        circuit_type: feedforward  # Primary circuit role
+        description: Parvalbumin-positive fast-spiking interneurons
+    SST:
+        threshold: 0.15       # Lower threshold
+        slope: 60.0           # Gentler slope  
+        max_rate: 80.0        # Lower max rate
+        circuit_type: feedback
+        description: Somatostatin-positive interneurons
+    VIP: 
+        threshold: 0.18
+        slope: 30.0
+        max_rate: 100.0
+        circuit_type: feedforward,
+        description: Vasoactive intestinal peptide interneurons
+    CCK:
+        threshold: 0.12
+        slope: 30.0
+        max_rate: 90.0
+        circuit_type: feedback
+        description: Cholecystokinin-positive interneurons
 
 
 # Opsin:

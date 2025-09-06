@@ -65,7 +65,7 @@ Synaptic Optimization:
     Targets:
       state:
         v:
-           threshold: -43.1
+          threshold: -43.1
           margin: 2.0
       firing rate: 9.0 # CCK+ data from Klausberger et al. J Neurosci 2005 
       mean fraction active per time bin: 0.9

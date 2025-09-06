@@ -3,108 +3,55 @@ Spatial Resolution: 3.0  # cm
 Temporal Resolution: 1.0  # ms
 Equilibration Duration: 250. # ms
 
-Selectivity Type Probabilities:
-  PYR:
-    constant: 1.0
-  PVBC:
-    constant: 1.0
-  OLM:
-    constant: 1.0
-  AAC:
-    constant: 1.0
-  BS:
-    constant: 1.0
-  CCKBC:
-    constant: 1.0
-  IVY:
-    constant: 1.0
-  NGFC:
-    constant: 1.0
-  SCA:
-    constant: 1.0
-  IS1:
-    constant: 1.0
-  IS2:
-    constant: 1.0
-  IS3:
-    constant: 1.0
-  CA3:
-    constant: 1.0
-  CA2:
-    constant: 1.0
-  EC:
-    constant: 1.0
 
-## Data from Pelkey KA, Chittajallu R, Craig MT, Tricoire L, Wester JC, McBain CJ. Hippocampal GABAergic Inhibitory Interneurons. Physiol Rev. 2017 Oct 1;97(4):1619-1747.
-
-Peak Rate:
-  PYR:
-    constant: 2.0
+Mean Response:
   AAC:
-    constant: 10.0
-  PVBC:
-    constant: 21.0
+       firing rate: 18.0 # mean PV+ FR in Allen Neuropixels data
+       mean fraction active per time bin: 0.92
+       std fraction active per time bin: 0.225
   BS:
-    constant: 18.0
-  OLM:
-    constant: 10.0
+       firing rate: 18.0 # mean PV+ FR in Allen Neuropixels data
+       mean fraction active per time bin: 0.92
+       std fraction active per time bin: 0.225
   CCKBC:
-    constant: 24.0
-  IVY:
-    constant: 3.0
-  NGFC:
-    constant: 10.0
-  SCA:
-    constant: 5.0
+       firing rate: 9.0 # CCK+ data from Klausberger et al. J Neurosci 2005 
+       mean fraction active per time bin: 0.9
+       std fraction active per time bin: 0.2
+  PVBC:
+      firing rate: 18.0 # mean PV+ FR in Allen Neuropixels data
+      mean fraction active per time bin: 0.92
+      std fraction active per time bin: 0.225
   IS1:
-    constant: 20.0
+      firing rate: 17.0 # mean VIP+ FR in Allen Neuropixels data
+      mean fraction active per time bin: 0.96
+      std fraction active per time bin: 0.16
   IS2:
-    constant: 20.0
+      firing rate: 17.0 # mean VIP+ FR in Allen Neuropixels data
+      mean fraction active per time bin: 0.96
+      std fraction active per time bin: 0.16
   IS3:
-    constant: 20.0
-  CA3:
-    constant: 5.0
-  CA2:
-    constant: 5.0
-  EC:
-    constant: 2.0
+      firing rate: 17.0 # mean VIP+ FR in Allen Neuropixels data
+      mean fraction active per time bin: 0.96
+      std fraction active per time bin: 0.16
+  IVY:
+      firing rate: 3.0 # Table 6 in Bezaire et al. 2016
+      mean fraction active per time bin: 0.98
+      std fraction active per time bin: 0.12
+  NGFC:
+      firing rate: 7.4 # Sakalar et al. Science 2022
+      mean fraction active per time bin: 0.95
+      std fraction active per time bin: 0.2
+  OLM:
+      firing rate: 13.0 # mean SST+ FR in Allen Neuropixels data
+      mean fraction active per time bin: 0.98
+      std fraction active per time bin: 0.12
+  SCA:
+      firing rate: 9.0 # CCK+ data from Klausberger et al. J Neurosci 2005 
+      mean fraction active per time bin: 0.92
+      std fraction active per time bin: 0.225
+
     
 
-
-Global Oscillation:
-  frequency: 5.0 # oscillation frequency
-  Phase Distribution:  # parameters of phase distribution along septotemporal axis
-    slope: 16.5
-    offset: 0.0
-  Phase Modulation: # cell type-specific modulation
-    PYR:
-      phase range: [0, 150]
-      depth: 0.5
-    PVBC:
-      phase range: [180, 540]
-      depth: 0.8
-    OLM:
-      phase range: [200, 560]
-      depth: 0.8
-
-Arena:
-  A:
-    Domain:
-      vertices: [[-100, -100], [-100, 100], [100, 100], [100, -100]]
-      simplices: [[0,1], [1,2], [2,3], [3,0]]
-
-    Trajectory:
-      Diag:
-        path: [[-100, -100], [100, 100]]
-        run velocity: 30.  # cm/s
-
-
-    default run velocity: 30.  # cm/s
-
-  Calibration:
-    Domain:
-      vertices: [[-32.5, -32.5], [-32.5, 32.5], [32.5, 32.5], [32.5, -32.5]]
-      simplices: [[0,1], [1,2], [2,3], [3,0]]
 
 # Opsin:
 #   nstates: 6

@@ -17,6 +17,7 @@ from miv_simulator.input_features import (
     EncoderTimeConfig
     )
 from miv_simulator.input_spike_trains import generate_input_spike_trains
+from input_signals import write_signal
 from mpi4py import MPI
 import h5py
 import logging
@@ -1525,70 +1526,8 @@ class DynamicalResponsePopulation(InputFeaturePopulation):
 
         # Save to h5 file if requested
         if output_path:
-            with h5py.File(output_path, "a") as f:
-                # Create a group for signals if it doesn't exist
-                if "Signals" not in f:
-                    signals_group = f.create_group("Signals")
-                else:
-                    signals_group = f["Signals"]
-
-                # Create a group for the specific signal
-                if signal_id in signals_group:
-                    del signals_group[signal_id]
-                signal_group = signals_group.create_group(signal_id)
-
-                # Store the stimulus data
-                signal_group.create_dataset("data", data=stimulus, compression="gzip")
-
-                # Store simple attributes directly
-                signal_group.attrs['name'] = self.name
-                signal_group.attrs['n_features'] = self.n_features
-
-                # Store dimensions as a dataset
-                dims_data = []
-                for dim in self.dimensions:
-                    dims_data.append({
-                        'name': dim['name'], 
-                        'range_min': dim['range'][0],
-                        'range_max': dim['range'][1],
-                        'scale': dim.get('scale', 'linear'),
-                        'priority': dim.get('priority', 1.0)
-                    })
-
-                # Create a structured dtype for dimensions
-                dim_dtype = np.dtype([
-                    ('name', 'S64'),
-                    ('range_min', float),
-                    ('range_max', float),
-                    ('scale', 'S16'),
-                    ('priority', float)
-                ])
-
-                # Create a structured array for dimensions
-                dim_array = np.zeros(len(dims_data), dtype=dim_dtype)
-                for i, dim in enumerate(dims_data):
-                    dim_array[i] = (
-                        dim['name'].encode('utf-8') if isinstance(dim['name'], str) else dim['name'],
-                        dim['range_min'],
-                        dim['range_max'],
-                        dim['scale'].encode('utf-8') if isinstance(dim['scale'], str) else dim['scale'],
-                        dim['priority']
-                    )
-
-                signal_group.create_dataset('dimensions', data=dim_array)
-
-                # Store dimension_stats as a group with datasets
-                dim_stats_group = signal_group.create_group('dimension_stats')
-                for dim_name, stats in self.dimension_stats.items():
-                    dim_group = dim_stats_group.create_group(dim_name)
-                    for stat_name, stat_value in stats.items():
-                        if stat_name == 'values' and stat_value:
-                            # Save values as a dataset
-                            dim_group.create_dataset('values', data=np.array(stat_value))
-                        elif stat_value is not None:
-                            # Save other stats as attributes
-                            dim_group.attrs[stat_name] = stat_value
-
+            write_signal(output_path, self.name, self.dimensions,
+                         signal_id, stimulus)
 
         return export_data
 

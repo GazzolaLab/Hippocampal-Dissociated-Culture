@@ -42,17 +42,23 @@ from interneuron_features import (
 from input_signals import read_signal, validate_signal
 
 # Define a custom reduction operation that concatenates lists
-def list_concat(a, b, datatype):
-    """Concatenate two lists of lists"""
+def response_concat(a, b, datatype):
+    """Concatenate dictionaries of spike responses"""
     if a is None:
         return b
     if b is None:
         return a
-    return a + b
+    d = a.copy()
+    for k in b:
+        if k in d:
+            d[k] = d[k] + b[k]
+        else:
+            d[k] = b[k]
+    return d
 
 
 # Create MPI concatenation operation
-list_concat_op = MPI.Op.Create(list_concat, commute=True)
+response_concat_op = MPI.Op.Create(response_concat, commute=True)
 
 
 def mpi_excepthook(type, value, traceback):
@@ -150,7 +156,7 @@ def run_interneuron_spike_generation(signal_id,
                                     fraction_active = { 'mean': 0.9, 'std': 0.2 },
                                     input_signal_file = None,  # Set to path of HDF5 file to read signal from
                                     register_population = True,
-                                    stimulus_duration = 1,
+                                    stimulus_duration = 10,
                                     n_features = 150,
                                     sample_dt_ms=1.0,
                                     random_seed = 42,
@@ -173,13 +179,13 @@ def run_interneuron_spike_generation(signal_id,
     
     
     # Environment setup
-    config = {}
     params = dict(locals())
     params["config_prefix"] = config_prefix
     params["Model Name"] = "interneuron_features"
     # np.seterr(all="raise")
     
     # Try to create environment (may need config files)
+    env = Env(**params)
     try:
         env = Env(**params)
     except:
@@ -187,19 +193,30 @@ def run_interneuron_spike_generation(signal_id,
             logging.warning("Could not initialize Env, proceeding without environment registration")
         env = None
 
+    fi_parameters_config = INTERNEURON_FI_PARAMS
+    mean_response_config = {}
+    if env is not None:
+        if "Stimulus" in env.model_config:
+            mean_response_config = env.model_config["Stimulus"].get("Mean Response", {})
+            fi_parameters_config = env.model_config["Stimulus"].get("f-I Parameters", INTERNEURON_FI_PARAMS)
+            
+    if population_name in mean_response_config:
+        mean_response = mean_response_config[population_name]
+        fraction_active = { 'mean': mean_response['mean fraction active per time bin'],
+                            'std': mean_response['std fraction active per time bin'] }
+
     # Signal input configuration
     use_generated_signal = input_signal_file is None
         
     # Generated signal parameters
     sample_dt_ms = 1.0
     sample_rate = 1000.0 / sample_dt_ms  # Sample rate [Hz]
-    duration = 10.0  # Overall signal duration [s]
     n_dimensions = 8  # Number of input signal dimensions
     
     # Create the interneuron modality
     interneuron_modality = InterneuronModality(
         name="interneuron",
-        input_shape=(int(duration * sample_rate), n_dimensions),
+        input_shape=(int(stimulus_duration * sample_rate), n_dimensions),
         norm_type='l2',
         temporal_smoothing=0.1
     )
@@ -218,10 +235,9 @@ def run_interneuron_spike_generation(signal_id,
         if hasattr(env, 'Populations'):
             for _, pop_enum in env.Populations.items():
                 max_pop_enum = max(pop_enum, max_pop_enum)
-    
+
 
     # Population configurations
-    # TODO: obtain fraction active and FI_PARAMS from env.Input_Configuration['Mean Response']
     population_config = {
         population_name: {
             'neuron_type': population_name if neuron_type is None else neuron_type,
@@ -238,7 +254,6 @@ def run_interneuron_spike_generation(signal_id,
         if env is not None and pop_name in env.celltypes:
             current_start_gid = env.celltypes[pop_name]["start"]
             n_features = env.celltypes[pop_name]["num"]
-            # TODO: obtain fraction active and FI_PARAMS from env.Input_Configuration['Mean Response']
             
         # Create population
         population = InterneuronFeaturePopulation(
@@ -322,7 +337,7 @@ def run_interneuron_spike_generation(signal_id,
                     # Validate the signal
                     if not validate_signal(
                         stimulus, 
-                        expected_duration=duration,
+                        expected_duration=stimulus_duration,
                         expected_sample_rate=sample_rate,
                         min_dimensions=1
                     ):
@@ -336,9 +351,9 @@ def run_interneuron_spike_generation(signal_id,
                         else:
                             n_dimensions = stimulus.shape[1]
 
-                        duration = stimulus.shape[0] / sample_rate
+                        stimulus_duration = stimulus.shape[0] / sample_rate
 
-                        logging.info(f"Successfully loaded signal: duration={duration:.1f}s, "
+                        logging.info(f"Successfully loaded signal: duration={stimulus_duration:.1f}s, "
                                      f"dimensions={n_dimensions}, sample_rate={sample_rate}Hz")
 
                 except Exception as e:
@@ -349,8 +364,8 @@ def run_interneuron_spike_generation(signal_id,
     
     # Broadcast signal reading results to all ranks
     if comm.size > 1:
-        signal_data = comm.bcast((stimulus, t, signal_metadata, duration, n_dimensions), root=0)
-        stimulus, t, signal_metadata, duration, n_dimensions = signal_data
+        signal_data = comm.bcast((stimulus, t, signal_metadata, stimulus_duration, n_dimensions), root=0)
+        stimulus, t, signal_metadata, stimulus_duration, n_dimensions = signal_data
     
     # Fall back to generated signal if reading failed or not requested
     if stimulus is None:
@@ -359,7 +374,7 @@ def run_interneuron_spike_generation(signal_id,
         
             # Create test signal
             t, stimulus = create_test_multidimensional_signal(
-                duration=duration,
+                duration=stimulus_duration,
                 sample_rate=sample_rate, 
                 n_dimensions=n_dimensions,
                 signal_type="mixed"
@@ -368,12 +383,12 @@ def run_interneuron_spike_generation(signal_id,
             signal_metadata = {
                 'source': 'generated',
                 'signal_type': 'mixed',
-                'duration': duration,
+                'duration': stimulus_duration,
                 'sample_rate': sample_rate,
                 'n_dimensions': n_dimensions
             }
-        signal_data = comm.bcast((stimulus, t, signal_metadata, duration, n_dimensions), root=0)
-        stimulus, t, signal_metadata, duration, n_dimensions = signal_data
+        signal_data = comm.bcast((stimulus, t, signal_metadata, stimulus_duration, n_dimensions), root=0)
+        stimulus, t, signal_metadata, stimulus_duration, n_dimensions = signal_data
         
     
     # Process the stimulus using the modality
@@ -415,11 +430,11 @@ def run_interneuron_spike_generation(signal_id,
             local_population_stats[pop_name] = pop_stats
 
     comm.barrier()
-    
+
     # Gather responses across all ranks for plotting
     if plot:
-        all_responses = comm.reduce(local_responses, op=list_concat_op, root=0)
-        all_pop_stats = comm.reduce(local_population_stats, op=list_concat_op, root=0)
+        all_responses = comm.reduce(local_responses, op=response_concat_op, root=0)
+        all_pop_stats = comm.reduce(local_population_stats, op=response_concat_op, root=0)
     else:
         all_responses = None
         all_pop_stats = None
@@ -474,7 +489,7 @@ def run_interneuron_spike_generation(signal_id,
         axes[3].set_title('f-I Curves for Different Interneuron Types')
         
         colors = ['red', 'blue', 'green', 'orange']
-        for i, (neuron_type, params) in enumerate(INTERNEURON_FI_PARAMS.items()):
+        for i, (neuron_type, params) in enumerate(fi_parameters_config.items()):
             response_model = InterneuronResponseModel(neuron_type)
             firing_rates = [response_model.compute_firing_rate(inp) for inp in test_inputs]
             
@@ -519,7 +534,7 @@ def run_interneuron_spike_generation(signal_id,
         
         axes[4].set_xlabel('Time (s)')
         axes[4].set_ylabel('Neuron')
-        axes[4].set_xlim(0, duration)
+        axes[4].set_xlim(0, stimulus_duration)
         axes[4].set_ylim(-1, y_offset)
         
         plt.tight_layout()
@@ -540,7 +555,7 @@ def run_interneuron_spike_generation(signal_id,
             print(f"  Response to mean signal: {pop_stats}")
             
             # Show f-I parameters
-            fi_params = INTERNEURON_FI_PARAMS[population.neuron_type]
+            fi_params = fi_parameters_config[population.neuron_type]
             print(f"  f-I parameters: threshold={fi_params['threshold']:.2f}, "
                   f"slope={fi_params['slope']:.1f}, max_rate={fi_params['max_rate']:.0f} Hz")
     
@@ -548,12 +563,10 @@ def run_interneuron_spike_generation(signal_id,
     
     # Generate actual spike trains (if not dry run)
     if not dry_run:
-        signal_id = "interneuron_drc_signal_10s"
-        
         for pop_name, population in populations.items():
             output_path = os.path.join(
                 output_prefix, 
-                f"{pop_name}_interneuron_spikes_10s.h5"
+                f"{pop_name}_{signal_id}_interneuron_spikes.h5"
             )
             
             if rank == 0:
@@ -573,6 +586,7 @@ def run_interneuron_spike_generation(signal_id,
                 chunk_size=10000,
                 value_chunk_size=200000,
             )
+            print(f"\nSpike trains saved to: {output_path}")
             
             # Save signal and metadata
             if rank == 0:
@@ -595,7 +609,7 @@ def run_interneuron_spike_generation(signal_id,
                     signal_group.create_dataset("time", data=t, compression="gzip")
                     
                     # Save metadata
-                    signal_group.attrs["duration"] = duration
+                    signal_group.attrs["duration"] = stimulus_duration
                     signal_group.attrs["sample_rate"] = sample_rate
                     signal_group.attrs["sample_dt_ms"] = sample_dt_ms
                     signal_group.attrs["n_dimensions"] = n_dimensions
@@ -604,7 +618,7 @@ def run_interneuron_spike_generation(signal_id,
                     signal_group.attrs["description"] = (
                         f"Multidimensional signal for interneuron population stimulation. "
                         f"Signal type: mixed oscillatory and noise. "
-                        f"Dimensions: {n_dimensions}. Duration: {duration}s."
+                        f"Dimensions: {n_dimensions}. Duration: {stimulus_duration}s."
                     )
                     
                     # Save population-specific metadata
@@ -613,7 +627,7 @@ def run_interneuron_spike_generation(signal_id,
                     pop_group.attrs["n_features"] = population.n_features
                     
                     # Save f-I parameters
-                    fi_params = INTERNEURON_FI_PARAMS[population.neuron_type]
+                    fi_params = fi_parameters_config[population.neuron_type]
                     for param_name, param_value in fi_params.items():
                         if isinstance(param_value, (int, float)):
                             pop_group.attrs[param_name] = param_value
@@ -627,9 +641,7 @@ def run_interneuron_spike_generation(signal_id,
         for pop_name, pop in populations.items():
             print(f"  - {pop_name}: {pop.n_features} {pop.neuron_type} neurons")
         
-        if not dry_run:
-            print(f"\nSpike trains saved to: {output_path}")
-        print(f"Signal duration: {duration}s")
+        print(f"Signal duration: {stimulus_duration} s")
         print(f"Signal dimensions: {n_dimensions}")
         print(f"Total time points: {len(processed_stimulus)}")
 
@@ -637,9 +649,13 @@ def run_interneuron_spike_generation(signal_id,
 if __name__ == "__main__":
     run_interneuron_spike_generation(signal_id = "test_interneuron_features_20250905",
                                      neuron_type = "PV",
+                                     population_name = "PVBC",
+                                     config = "Network_Clamp_PYR_gid_48041.yaml",
+                                     dataset_prefix = "datasets",
                                      stimulus_duration = 10,
                                      output_prefix = "datasets",
-                                     dry_run = True)
+                                     register_population = False,
+                                     dry_run = False)
                                      
 
     

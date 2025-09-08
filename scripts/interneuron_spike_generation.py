@@ -360,36 +360,36 @@ def run_interneuron_spike_generation(signal_id,
                     logging.error(f"Failed to read signal: {e}")
                     stimulus = None
                     t = None
+                    
+        # Fall back to generated signal if reading failed or not requested
+        if stimulus is None:
+            if rank == 0:
+                logging.info("Generating new test signal")
+
+                # Create test signal
+                t, stimulus = create_test_multidimensional_signal(
+                    duration=stimulus_duration,
+                    sample_rate=sample_rate, 
+                    n_dimensions=n_dimensions,
+                    signal_type="mixed"
+                )
+
+                signal_metadata = {
+                    'source': 'generated',
+                    'signal_type': 'mixed',
+                    'duration': stimulus_duration,
+                    'sample_rate': sample_rate,
+                    'n_dimensions': n_dimensions
+                }
+            signal_data = comm.bcast((stimulus, t, signal_metadata, stimulus_duration, n_dimensions), root=0)
+            stimulus, t, signal_metadata, stimulus_duration, n_dimensions = signal_data
+        
     comm.barrier()
     
     # Broadcast signal reading results to all ranks
     if comm.size > 1:
         signal_data = comm.bcast((stimulus, t, signal_metadata, stimulus_duration, n_dimensions), root=0)
         stimulus, t, signal_metadata, stimulus_duration, n_dimensions = signal_data
-    
-    # Fall back to generated signal if reading failed or not requested
-    if stimulus is None:
-        if rank == 0:
-            logging.info("Generating new test signal")
-        
-            # Create test signal
-            t, stimulus = create_test_multidimensional_signal(
-                duration=stimulus_duration,
-                sample_rate=sample_rate, 
-                n_dimensions=n_dimensions,
-                signal_type="mixed"
-            )
-        
-            signal_metadata = {
-                'source': 'generated',
-                'signal_type': 'mixed',
-                'duration': stimulus_duration,
-                'sample_rate': sample_rate,
-                'n_dimensions': n_dimensions
-            }
-        signal_data = comm.bcast((stimulus, t, signal_metadata, stimulus_duration, n_dimensions), root=0)
-        stimulus, t, signal_metadata, stimulus_duration, n_dimensions = signal_data
-        
     
     # Process the stimulus using the modality
     processed_stimulus = interneuron_modality.preprocess_signal(stimulus)
@@ -651,7 +651,7 @@ if __name__ == "__main__":
                                      neuron_type = "PV",
                                      population_name = "PVBC",
                                      config = "Network_Clamp_PYR_gid_48041.yaml",
-                                     dataset_prefix = "datasets",
+                                     dataset_prefix = "",
                                      stimulus_duration = 10,
                                      output_prefix = "datasets",
                                      register_population = False,

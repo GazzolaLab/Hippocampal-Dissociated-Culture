@@ -67,13 +67,14 @@ def write_signal(h5_file_path: str,
                  name: str,
                  dimensions: List[Dict[str, Any]],
                  signal_id: str,
-                 stimulus: np.ndarray):
+                 stimulus: np.ndarray,
+                 dimension_stats: Optional[Dict[str, Any]] = None):
 
     assert validate_signal(stimulus)
 
     _, n_features = stimulus.shape
     
-    with h5py.File(output_path, "a") as f:
+    with h5py.File(h5_file_path, "a") as f:
             # Create a group for signals if it doesn't exist
             if "Signals" not in f:
                 signals_group = f.create_group("Signals")
@@ -94,7 +95,7 @@ def write_signal(h5_file_path: str,
 
             # Store dimensions as a dataset
             dims_data = []
-            for dim in self.dimensions:
+            for dim in dimensions:
                 dims_data.append({
                     'name': dim['name'], 
                     'range_min': dim['range'][0],
@@ -126,16 +127,17 @@ def write_signal(h5_file_path: str,
             signal_group.create_dataset('dimensions', data=dim_array)
 
             # Store dimension_stats as a group with datasets
-            dim_stats_group = signal_group.create_group('dimension_stats')
-            for dim_name, stats in self.dimension_stats.items():
-                dim_group = dim_stats_group.create_group(dim_name)
-                for stat_name, stat_value in stats.items():
-                    if stat_name == 'values' and stat_value:
-                        # Save values as a dataset
-                        dim_group.create_dataset('values', data=np.array(stat_value))
-                    elif stat_value is not None:
-                        # Save other stats as attributes
-                        dim_group.attrs[stat_name] = stat_value
+            if dimension_stats is not None:
+                dim_stats_group = signal_group.create_group('dimension_stats')
+                for dim_name, stats in dimension_stats.items():
+                    dim_group = dim_stats_group.create_group(dim_name)
+                    for stat_name, stat_value in stats.items():
+                        if stat_name == 'values' and stat_value:
+                            # Save values as a dataset
+                            dim_group.create_dataset('values', data=np.array(stat_value))
+                        elif stat_value is not None:
+                            # Save other stats as attributes
+                            dim_group.attrs[stat_name] = stat_value
 
     
 

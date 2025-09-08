@@ -361,29 +361,31 @@ def run_interneuron_spike_generation(signal_id,
                     stimulus = None
                     t = None
                     
-        # Fall back to generated signal if reading failed or not requested
-        if stimulus is None:
-            if rank == 0:
-                logging.info("Generating new test signal")
+                    
+    comm.barrier()
+    signal_data = comm.bcast((stimulus, t, signal_metadata, stimulus_duration, n_dimensions), root=0)
+    stimulus, t, signal_metadata, stimulus_duration, n_dimensions = signal_data
+    
+    # Fall back to generated signal if reading failed or not requested
+    if stimulus is None:
+        if rank == 0:
+            logging.info("Generating new test signal")
 
-                # Create test signal
-                t, stimulus = create_test_multidimensional_signal(
-                    duration=stimulus_duration,
-                    sample_rate=sample_rate, 
-                    n_dimensions=n_dimensions,
-                    signal_type="mixed"
-                )
+            # Create test signal
+            t, stimulus = create_test_multidimensional_signal(
+                duration=stimulus_duration,
+                sample_rate=sample_rate, 
+                n_dimensions=n_dimensions,
+                signal_type="mixed"
+            )
 
-                signal_metadata = {
-                    'source': 'generated',
-                    'signal_type': 'mixed',
-                    'duration': stimulus_duration,
-                    'sample_rate': sample_rate,
-                    'n_dimensions': n_dimensions
-                }
-            signal_data = comm.bcast((stimulus, t, signal_metadata, stimulus_duration, n_dimensions), root=0)
-            stimulus, t, signal_metadata, stimulus_duration, n_dimensions = signal_data
-        
+            signal_metadata = {
+                'source': 'generated',
+                'signal_type': 'mixed',
+                'duration': stimulus_duration,
+                'sample_rate': sample_rate,
+                'n_dimensions': n_dimensions
+            }
     comm.barrier()
     
     # Broadcast signal reading results to all ranks
@@ -581,10 +583,7 @@ def run_interneuron_spike_generation(signal_id,
                 output_path=output_path,
                 output_spikes_namespace="Interneuron Spikes",
                 output_spike_train_attr_name="Spike Train",
-                io_size=4,
-                write_size=50000,
-                chunk_size=10000,
-                value_chunk_size=200000,
+                **io_kwargs
             )
             print(f"\nSpike trains saved to: {output_path}")
             
@@ -651,10 +650,13 @@ if __name__ == "__main__":
                                      neuron_type = "PV",
                                      population_name = "PVBC",
                                      config = "Network_Clamp_PYR_gid_48041.yaml",
-                                     dataset_prefix = "",
+                                     dataset_prefix = "/home/igr/Data/projects/Hippocampal-Dissociated-Culture/datasets",
                                      stimulus_duration = 10,
                                      output_prefix = "datasets",
                                      register_population = False,
+                                     io_kwargs={'io_size': 1,
+                                                'write_size': 10,
+                                                },
                                      dry_run = False)
                                      
 

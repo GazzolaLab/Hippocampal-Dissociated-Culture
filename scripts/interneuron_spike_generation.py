@@ -39,7 +39,7 @@ from interneuron_features import (
     InterneuronResponseModel,
     INTERNEURON_FI_PARAMS
 )
-from input_signals import read_signal, validate_signal
+from input_signals import read_signal, validate_signal, list_available_signals
 
 # Define a custom reduction operation that concatenates lists
 def response_concat(a, b, datatype):
@@ -146,37 +146,39 @@ def create_test_multidimensional_signal(duration: float,
     
     return t, signal
 
-def run_interneuron_spike_generation(signal_id,
-                                    dataset_prefix = "./datasets",
-                                    output_prefix = ".",
-                                    config_prefix = "./config",
-                                    config = "Dynamical_Response_Features.yaml",
-                                    population_name = "IN",
-                                    neuron_type = None,
-                                    fraction_active = { 'mean': 0.9, 'std': 0.2 },
-                                    input_signal_file = None,  # Set to path of HDF5 file to read signal from
-                                    register_population = True,
-                                    stimulus_duration = 10,
-                                    n_features = 150,
-                                    sample_dt_ms=1.0,
-                                    random_seed = 42,
-                                    n_channels = 10,
-                                    dry_run = False,
-                                    plot = True,
-                                    comm = None,
-                                    io_kwargs = {
-                                        'io_size': 1,
-                                        'write_size': 1,
-                                        'chunk_size': 10000,
-                                        'value_chunk_size': 20000,
-                                    },
+def run_interneuron_spike_generation(signal_id = None,
+                                     dataset_prefix = "./datasets",
+                                     output_prefix = ".",
+                                     config_prefix = "./config",
+                                     config = "Dynamical_Response_Features.yaml",
+                                     population_name = "IN",
+                                     neuron_type = None,
+                                     fraction_active = { 'mean': 0.9, 'std': 0.2 },
+                                     input_signal_file = None,  # Set to path of HDF5 file to read signal from
+                                     register_population = True,
+                                     stimulus_duration = 10,
+                                     n_features = 150,
+                                     sample_dt_ms=1.0,
+                                     random_seed = 42,
+                                     n_channels = 10,
+                                     dry_run = False,
+                                     plot = True,
+                                     comm = None,
+                                     io_kwargs = {
+                                         'io_size': 1,
+                                         'write_size': 1,
+                                         'chunk_size': 10000,
+                                         'value_chunk_size': 20000,
+                                     },
                                 ):
     if comm is None:
         comm = MPI.COMM_WORLD
     rank = comm.rank
     
     logging.basicConfig(level=logging.INFO)
-    
+
+    if (input_signal_file is None) and (signal_id is None):
+        signal_id = "interneuron_signal"
     
     # Environment setup
     params = dict(locals())
@@ -211,7 +213,7 @@ def run_interneuron_spike_generation(signal_id,
     # Generated signal parameters
     sample_dt_ms = 1.0
     sample_rate = 1000.0 / sample_dt_ms  # Sample rate [Hz]
-    n_dimensions = 8  # Number of input signal dimensions
+    n_dimensions = n_channels  # Number of input signal dimensions
     
     # Create the interneuron modality
     interneuron_modality = InterneuronModality(
@@ -303,6 +305,7 @@ def run_interneuron_spike_generation(signal_id,
     stimulus = None
     t = None
     signal_metadata = {}
+    input_signal_id = signal_id
 
     # Check if we should read from file
     if rank == 0:
@@ -325,6 +328,9 @@ def run_interneuron_spike_generation(signal_id,
                     logging.error("No signals found in file")
                     use_generated_signal = True
 
+                if input_signal_id is not None:
+                    signal_id = input_signal_id
+                    
             # Try to read the signal
             if input_signal_id is not None:
                 try:
@@ -365,7 +371,10 @@ def run_interneuron_spike_generation(signal_id,
     comm.barrier()
     signal_data = comm.bcast((stimulus, t, signal_metadata, stimulus_duration, n_dimensions), root=0)
     stimulus, t, signal_metadata, stimulus_duration, n_dimensions = signal_data
-    
+
+    if stimulus is not None:
+        signal_id = input_signal_id
+
     # Fall back to generated signal if reading failed or not requested
     if stimulus is None:
         if rank == 0:
@@ -585,7 +594,8 @@ def run_interneuron_spike_generation(signal_id,
                 output_spike_train_attr_name="Spike Train",
                 **io_kwargs
             )
-            print(f"\nSpike trains saved to: {output_path}")
+            if rank == 0:
+                print(f"\nSpike trains saved to: {output_path}")
             
             # Save signal and metadata
             if rank == 0:
@@ -646,7 +656,8 @@ def run_interneuron_spike_generation(signal_id,
 
         
 if __name__ == "__main__":
-    run_interneuron_spike_generation(signal_id = "test_interneuron_features_20250905",
+    run_interneuron_spike_generation(#signal_id = "test_interneuron_features_20250905",
+                                     input_signal_file = "datasets/dynamical_response_spike_trains_n150_10s.h5",
                                      neuron_type = "PV",
                                      population_name = "PVBC",
                                      config = "Network_Clamp_PYR_gid_48041.yaml",

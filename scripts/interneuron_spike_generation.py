@@ -656,34 +656,34 @@ def run_interneuron_spike_generation(signal_id = None,
 
         
 if __name__ == "__main__":
-    run_interneuron_spike_generation(#signal_id = "test_interneuron_features_20250905",
-                                     input_signal_file = "datasets/dynamical_response_spike_trains_n150_10s.h5",
-                                     neuron_type = "PV",
-                                     population_name = "PVBC",
-                                     config = "Network_Clamp_PYR_gid_48041.yaml",
-                                     dataset_prefix = "/home/igr/Data/projects/Hippocampal-Dissociated-Culture/datasets",
-                                     stimulus_duration = 10,
-                                     output_prefix = "datasets",
-                                     register_population = False,
-                                     io_kwargs={'io_size': 1,
-                                                'write_size': 10,
-                                                },
-                                     dry_run = False)
+    # run_interneuron_spike_generation(#signal_id = "test_interneuron_features_20250905",
+    #                                  input_signal_file = "datasets/dynamical_response_spike_trains_n150_10s.h5",
+    #                                  neuron_type = "PV",
+    #                                  population_name = "PVBC",
+    #                                  config = "Network_Clamp_PYR_gid_48041.yaml",
+    #                                  dataset_prefix = "datasets",
+    #                                  stimulus_duration = 10,
+    #                                  output_prefix = "datasets",
+    #                                  register_population = False,
+    #                                  io_kwargs={'io_size': 1,
+    #                                             'write_size': 10,
+    #                                             },
+    #                                  dry_run = False)
                                      
 
     
-    # run_interneuron_spike_generation(signal_id = "drc_features_20250905",
-    #                                  stimulus_duration = 10,
-    #                                  population_name = "PYR",
-    #                                  register_population = False,
-    #                                  config = "Full_Scale_Dynamic_Response_Features.yaml",
-    #                                  output_path = "PYR_dynamical_response_spike_trains_10s.h5",
-    #                                  dataset_prefix = "/scratch1/03320/iraikov/striped2/MiV",
-    #                                  output_prefix = "/scratch1/03320/iraikov/striped2/MiV/results/livn",
-    #                                  plot=False,
-    #                                  io_kwargs={'io_size': 4,
-    #                                             'write_size': 50000,
-    #                                             'chunk_size': 10000,
-    #                                             'value_chunk_size': 100000,
-    #                                             }
-    #                                  )
+    run_interneuron_spike_generation(signal_id = "drc_features_20250905",
+                                     stimulus_duration = 10,
+                                     population_name = "PYR",
+                                     register_population = False,
+                                     config = "Full_Scale_Dynamic_Response_Features.yaml",
+                                     output_path = "PYR_dynamical_response_spike_trains_10s.h5",
+                                     dataset_prefix = "/scratch1/03320/iraikov/striped2/MiV",
+                                     output_prefix = "/scratch1/03320/iraikov/striped2/MiV/results/livn",
+                                     plot=False,
+                                     io_kwargs={'io_size': 4,
+                                                'write_size': 50000,
+                                                'chunk_size': 10000,
+                                                'value_chunk_size': 100000,
+                                                }
+                                     )

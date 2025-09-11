@@ -1920,34 +1920,34 @@ def run_dynamical_response_characterization(signal_id = None,
     return population, analysis_results, export_data
 
 if __name__ == "__main__":
-    run_dynamical_response_characterization(#signal_id = "drc_features_20240908",
-                                            input_signal_file = "datasets/dynamical_response_spike_trains_n150_10s.h5",
-                                            config = "Network_Clamp_PYR_gid_48041.yaml",
-                                            stimulus_duration = 10,
-                                            dataset_prefix = "/home/igr/Data/projects/Hippocampal-Dissociated-Culture/datasets",
-                                            output_path = "dynamical_response_spike_trains_n150_10s_2.h5",
-                                            output_prefix = "./datasets",
-                                            population_name = "DRC",
-                                            n_features = 150,
-                                            io_kwargs={'io_size': 1,
-                                                       'write_size': 10,
-                                                       },
-                                            dry_run = False)
-
-    # run_dynamical_response_characterization(signal_id = "drc_features_20240908",
+    # run_dynamical_response_characterization(#signal_id = "drc_features_20240908",
+    #                                         input_signal_file = "datasets/dynamical_response_spike_trains_n150_10s.h5",
+    #                                         config = "Network_Clamp_PYR_gid_48041.yaml",
     #                                         stimulus_duration = 10,
-    #                                         population_name = "PYR",
-    #                                         register_population = False,
-    #                                         config = "Full_Scale_Dynamic_Response_Features.yaml",
-    #                                         output_path = "PYR_dynamical_response_spike_trains_10s.h5",
-    #                                         dataset_prefix = "/scratch1/03320/iraikov/striped2/MiV",
-    #                                         output_prefix = "/scratch1/03320/iraikov/striped2/MiV/results/livn",
-    #                                         plot=False,
-    #                                         io_kwargs={'io_size': 4,
-    #                                                    'write_size': 50000,
-    #                                                    'chunk_size': 10000,
-    #                                                    'value_chunk_size': 100000,
-    #                                                    }
-    #                                     )
+    #                                         dataset_prefix = "datasets",
+    #                                         output_path = "dynamical_response_spike_trains_n150_10s_2.h5",
+    #                                         output_prefix = "./datasets",
+    #                                         population_name = "DRC",
+    #                                         n_features = 150,
+    #                                         io_kwargs={'io_size': 1,
+    #                                                    'write_size': 10,
+    #                                                    },
+    #                                         dry_run = False)
+
+    run_dynamical_response_characterization(signal_id = "drc_features_20240908",
+                                            stimulus_duration = 10,
+                                            population_name = "PYR",
+                                            register_population = False,
+                                            config = "Full_Scale_Dynamic_Response_Features.yaml",
+                                            output_path = "PYR_dynamical_response_spike_trains_10s.h5",
+                                            dataset_prefix = "/scratch1/03320/iraikov/striped2/MiV",
+                                            output_prefix = "/scratch1/03320/iraikov/striped2/MiV/results/livn",
+                                            plot=False,
+                                            io_kwargs={'io_size': 4,
+                                                       'write_size': 50000,
+                                                       'chunk_size': 10000,
+                                                       'value_chunk_size': 100000,
+                                                       }
+                                        )
 
 

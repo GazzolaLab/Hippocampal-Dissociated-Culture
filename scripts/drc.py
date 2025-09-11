@@ -17,7 +17,7 @@ from miv_simulator.input_features import (
     EncoderTimeConfig
     )
 from miv_simulator.input_spike_trains import generate_input_spike_trains
-from input_signals import write_signal
+from input_signals import write_signal, read_signal, list_available_signals
 from mpi4py import MPI
 import h5py
 import logging
@@ -1656,7 +1656,7 @@ def create_dynamical_response_system(
     return feature_space, spatio_temporal_modality, population, time_config
 
 
-def run_dynamical_response_characterization(signal_id,
+def run_dynamical_response_characterization(signal_id = None,
                                             dataset_prefix = "./datasets",
                                             output_prefix = ".",
                                             config_prefix = "./config",
@@ -1685,6 +1685,9 @@ def run_dynamical_response_characterization(signal_id,
     if comm is None:
         comm = MPI.COMM_WORLD
     rank = comm.rank
+    
+    if (input_signal_file is None) and (signal_id is None):
+        signal_id = "drc_signal"
     
     # np.seterr(all="raise")
     params = dict(locals())
@@ -1717,6 +1720,7 @@ def run_dynamical_response_characterization(signal_id,
     stimulus = None
     t = None
     signal_metadata = {}
+    input_signal_id = signal_id
 
     # Signal input configuration
     use_generated_signal = input_signal_file is None
@@ -1725,8 +1729,6 @@ def run_dynamical_response_characterization(signal_id,
     if rank == 0:
         if not use_generated_signal and input_signal_file is not None:
             logging.info(f"Reading signal from {input_signal_file}...")
-
-            input_signal_id = signal_id
 
             # List available signals if signal_id not specified
             if input_signal_id is None:
@@ -1786,6 +1788,9 @@ def run_dynamical_response_characterization(signal_id,
     comm.barrier()
     signal_data = comm.bcast((stimulus, t, signal_metadata, stimulus_duration, n_dimensions), root=0)
     stimulus, t, signal_metadata, stimulus_duration, n_dimensions = signal_data
+
+    if stimulus is not None:
+        signal_id = input_signal_id
             
     # Fall back to generated signal if reading failed or not requested
     if stimulus is None:
@@ -1915,11 +1920,12 @@ def run_dynamical_response_characterization(signal_id,
     return population, analysis_results, export_data
 
 if __name__ == "__main__":
-    run_dynamical_response_characterization(signal_id = "drc_features_20240908",
+    run_dynamical_response_characterization(#signal_id = "drc_features_20240908",
+                                            input_signal_file = "datasets/dynamical_response_spike_trains_n150_10s.h5",
                                             config = "Network_Clamp_PYR_gid_48041.yaml",
                                             stimulus_duration = 10,
                                             dataset_prefix = "/home/igr/Data/projects/Hippocampal-Dissociated-Culture/datasets",
-                                            output_path = "dynamical_response_spike_trains_n150_10s.h5",
+                                            output_path = "dynamical_response_spike_trains_n150_10s_2.h5",
                                             output_prefix = "./datasets",
                                             population_name = "DRC",
                                             n_features = 150,

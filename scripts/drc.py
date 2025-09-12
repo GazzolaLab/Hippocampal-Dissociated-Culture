@@ -17,7 +17,7 @@ from miv_simulator.input_features import (
     EncoderTimeConfig
     )
 from miv_simulator.input_spike_trains import generate_input_spike_trains
-from input_signals import write_signal, read_signal, list_available_signals
+from input_signals import write_signal, read_signal, list_available_signals, create_multidimensional_signal
 from mpi4py import MPI
 import h5py
 import logging
@@ -1668,7 +1668,7 @@ def run_dynamical_response_characterization(signal_id = None,
                                             n_features = 150,
                                             sample_dt_ms=1.0,
                                             random_seed = 42,
-                                            n_dimensions = 10,
+                                            n_dimensions = 64,
                                             dry_run = False,
                                             plot = True,
                                             output_path = None,
@@ -1797,28 +1797,12 @@ def run_dynamical_response_characterization(signal_id = None,
         if rank == 0:
             logging.info("Generating new test signal")
 
-            # Generate time base
-            t = np.linspace(0, stimulus_duration, int(stimulus_duration * sample_rate_hz), endpoint=False)
-
-
-            # Create a stimulus with different frequencies in different regions
-            stimulus = np.zeros((int(stimulus_duration * sample_rate_hz), n_dimensions))
-            segment_length = len(t) // 4
-
-            # Region 1: 5Hz in first quarter, all channels
-            stimulus[:segment_length, :] = np.sin(2 * np.pi * 5.0 * t[:segment_length, np.newaxis])
-
-            # Region 2: 10Hz in second quarter, left channels
-            stimulus[segment_length:2*segment_length, :5] = np.sin(2 * np.pi * 10.0 * t[segment_length:2*segment_length, np.newaxis])
-
-            # Region 3: 20Hz in third quarter, right channels
-            stimulus[2*segment_length:3*segment_length, 5:] = np.sin(2 * np.pi * 20.0 * t[2*segment_length:3*segment_length, np.newaxis])
-
-            # Region 4: 40Hz in fourth quarter, all channels
-            stimulus[3*segment_length:, :] = np.sin(2 * np.pi * 40.0 * t[3*segment_length:, np.newaxis])
-
-            # Add some noise
-            stimulus += np.random.normal(0, 0.1, stimulus.shape)
+            t, stimulus = create_multidimensional_signal(
+                duration=stimulus_duration,
+                sample_rate=sample_rate_hz, 
+                n_dimensions=n_dimensions,
+                signal_type="mixed"
+            )
 
             signal_metadata = {
                 'source': 'generated',
@@ -1920,6 +1904,19 @@ def run_dynamical_response_characterization(signal_id = None,
     return population, analysis_results, export_data
 
 if __name__ == "__main__":
+    run_dynamical_response_characterization(signal_id = "drc_features_20240912",
+                                            config = "Network_Clamp_PYR_gid_48041.yaml",
+                                            stimulus_duration = 10,
+                                            dataset_prefix = "/home/igr/Data/projects/Hippocampal-Dissociated-Culture/datasets",
+                                            output_path = "dynamical_response_spike_trains_n150_10s_3.h5",
+                                            output_prefix = "datasets",
+                                            population_name = "DRC",
+                                            n_features = 150,
+                                            io_kwargs={'io_size': 1,
+                                                       'write_size': 10,
+                                                       },
+                                            dry_run = True)
+
     # run_dynamical_response_characterization(#signal_id = "drc_features_20240908",
     #                                         input_signal_file = "datasets/dynamical_response_spike_trains_n150_10s.h5",
     #                                         config = "Network_Clamp_PYR_gid_48041.yaml",
@@ -1934,20 +1931,20 @@ if __name__ == "__main__":
     #                                                    },
     #                                         dry_run = False)
 
-    run_dynamical_response_characterization(signal_id = "drc_features_20240908",
-                                            stimulus_duration = 10,
-                                            population_name = "PYR",
-                                            register_population = False,
-                                            config = "Full_Scale_Dynamic_Response_Features.yaml",
-                                            output_path = "PYR_dynamical_response_spike_trains_10s.h5",
-                                            dataset_prefix = "/scratch1/03320/iraikov/striped2/MiV",
-                                            output_prefix = "/scratch1/03320/iraikov/striped2/MiV/results/livn",
-                                            plot=False,
-                                            io_kwargs={'io_size': 4,
-                                                       'write_size': 50000,
-                                                       'chunk_size': 10000,
-                                                       'value_chunk_size': 100000,
-                                                       }
-                                        )
+    # run_dynamical_response_characterization(signal_id = "drc_features_20240908",
+    #                                         stimulus_duration = 10,
+    #                                         population_name = "PYR",
+    #                                         register_population = False,
+    #                                         config = "Full_Scale_Dynamic_Response_Features.yaml",
+    #                                         output_path = "PYR_dynamical_response_spike_trains_10s.h5",
+    #                                         dataset_prefix = "/scratch1/03320/iraikov/striped2/MiV",
+    #                                         output_prefix = "/scratch1/03320/iraikov/striped2/MiV/results/livn",
+    #                                         plot=False,
+    #                                         io_kwargs={'io_size': 4,
+    #                                                    'write_size': 50000,
+    #                                                    'chunk_size': 10000,
+    #                                                    'value_chunk_size': 100000,
+    #                                                    }
+    #                                     )
 
 

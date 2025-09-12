@@ -17,7 +17,7 @@ from miv_simulator.input_features import (
     EncoderTimeConfig
     )
 from miv_simulator.input_spike_trains import generate_input_spike_trains
-from input_signals import write_signal, read_signal, list_available_signals, create_multidimensional_signal
+from input_signals import write_signal, read_signal, list_available_signals, validate_signal, create_multidimensional_signal
 from mpi4py import MPI
 import h5py
 import logging
@@ -1633,7 +1633,18 @@ def create_dynamical_response_system(
         },
         random_seed=random_seed,
     )
-    
+
+    # Determine population id
+    population_info = None
+    if register_population:
+        population_info = env.register_population(population.name,
+                                                  {"All": n_features})
+        if population_info is not None:
+            start_gid = population_info['population_start_gid']
+
+    population.start_gid = start_gid
+
+    logger.info(f"start_gid = {start_gid}")
     # Generate features
     population.generate_features(start_gid=start_gid,
                                  rank=comm.rank, size=comm.size)
@@ -1644,14 +1655,6 @@ def create_dynamical_response_system(
         dt_ms=1.0,
     )
 
-    # Determine population id
-    if register_population:
-        population_info = env.register_population(population.name,
-                                                  {"All": n_features})
-    if population_info is not None:
-        start_gid = population_info['population_start_gid']
-
-    population.start_gid = start_gid
     
     return feature_space, spatio_temporal_modality, population, time_config
 
@@ -1755,14 +1758,14 @@ def run_dynamical_response_characterization(signal_id = None,
                     t, stimulus, signal_metadata = read_signal(
                         input_signal_file, 
                         input_signal_id, 
-                        sample_rate=sample_rate
+                        sample_rate=sample_rate_hz
                     )
 
                     # Validate the signal
                     if not validate_signal(
                         stimulus, 
                         expected_duration=stimulus_duration,
-                        expected_sample_rate=sample_rate,
+                        expected_sample_rate=sample_rate_hz,
                         min_dimensions=1
                     ):
                         logging.warning("Signal validation failed, falling back to generated signal")
@@ -1775,10 +1778,10 @@ def run_dynamical_response_characterization(signal_id = None,
                         else:
                             n_dimensions = stimulus.shape[1]
 
-                        stimulus_duration = stimulus.shape[0] / sample_rate
+                        stimulus_duration = stimulus.shape[0] / sample_rate_hz
 
-                        logging.info(f"Successfully loaded signal: duration={stimulus_duration:.1f}s, "
-                                     f"dimensions={n_dimensions}, sample_rate={sample_rate}Hz")
+                        logging.info(f"Successfully loaded signal: duration={stimulus_duration:.1f} s, "
+                                     f"dimensions={n_dimensions}, sample_rate={sample_rate_hz} Hz")
 
                 except Exception as e:
                     logging.error(f"Failed to read signal: {e}")
@@ -1821,19 +1824,19 @@ def run_dynamical_response_characterization(signal_id = None,
     if output_prefix is not None:
         output_path = os.path.join(output_prefix, output_path)
 
-    if not dry_run:
-        output_spikes_namespace = f"Spatiotemporal Feature Spikes"
-        generate_input_spike_trains(
-            env,
-            population,
-            signal=stimulus,
-            signal_id=signal_id,
-            coords_path=None,
-            output_path=output_path,
-            output_spikes_namespace=output_spikes_namespace,
-            output_spike_train_attr_name="Spike Train",
-            **io_kwargs,
-        )
+    output_spikes_namespace = f"Spatiotemporal Feature Spikes"
+    generate_input_spike_trains(
+        env,
+        population,
+        signal=stimulus,
+        signal_id=signal_id,
+        coords_path=None,
+        output_path=output_path,
+        output_spikes_namespace=output_spikes_namespace,
+        output_spike_train_attr_name="Spike Train",
+        dry_run=dry_run,
+        **io_kwargs,
+    )
 
     export_data = None
     if rank == 0:

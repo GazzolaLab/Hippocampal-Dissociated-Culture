@@ -501,77 +501,77 @@ def run_interneuron_spike_generation(signal_id = None,
     comm.barrier()
     
     # Generate actual spike trains (if not dry run)
-    if not dry_run:
-        for pop_name, population in populations.items():
-            output_path = os.path.join(
-                output_prefix, 
-                f"{pop_name}_{signal_id}_interneuron_spikes.h5"
-            )
-            
-            if rank == 0:
-                logging.info(f"Generating spike trains for {pop_name}...")
-            
-            generate_input_spike_trains(
-                env,
-                population,
-                signal=stimulus,
-                signal_id=signal_id,
-                coords_path=None,
-                output_path=output_path,
-                output_spikes_namespace="Interneuron Spikes",
-                output_spike_train_attr_name="Spike Train",
-                **io_kwargs
-            )
-            if rank == 0:
-                print(f"\nSpike trains saved to: {output_path}")
-            
-            # Save signal and metadata
-            if rank == 0:
-                logging.info(f"Saving signal metadata to {output_path}")
-                with h5py.File(output_path, "a") as f:
-                    # Create signals group
-                    if "Signals" not in f:
-                        signals_group = f.create_group("Signals")
+    for pop_name, population in populations.items():
+        output_path = os.path.join(
+            output_prefix, 
+            f"{pop_name}_{signal_id}_interneuron_spikes.h5"
+        )
+
+        if rank == 0:
+            logging.info(f"Generating spike trains for {pop_name}...")
+
+        generate_input_spike_trains(
+            env,
+            population,
+            signal=stimulus,
+            signal_id=signal_id,
+            coords_path=None,
+            output_path=output_path,
+            output_spikes_namespace="Interneuron Spikes",
+            output_spike_train_attr_name="Spike Train",
+            dry_run=dry_run,
+            **io_kwargs
+        )
+        if rank == 0:
+            print(f"\nSpike trains saved to: {output_path}")
+
+        # Save signal and metadata
+        if (not dry_run) and rank == 0:
+            logging.info(f"Saving signal metadata to {output_path}")
+            with h5py.File(output_path, "a") as f:
+                # Create signals group
+                if "Signals" not in f:
+                    signals_group = f.create_group("Signals")
+                else:
+                    signals_group = f["Signals"]
+
+                # Create signal group
+                if signal_id in signals_group:
+                    del signals_group[signal_id]
+                signal_group = signals_group.create_group(signal_id)
+
+                # Save signal data
+                signal_group.create_dataset("data", data=stimulus, compression="gzip")
+                signal_group.create_dataset("processed_data", data=processed_stimulus, compression="gzip")
+                signal_group.create_dataset("time", data=t, compression="gzip")
+
+                # Save metadata
+                signal_group.attrs["duration"] = stimulus_duration
+                signal_group.attrs["sample_rate"] = sample_rate
+                signal_group.attrs["sample_dt_ms"] = sample_dt_ms
+                signal_group.attrs["n_dimensions"] = n_dimensions
+                signal_group.attrs["norm_type"] = interneuron_modality.norm_type
+                signal_group.attrs["temporal_smoothing"] = interneuron_modality.temporal_smoothing
+                signal_group.attrs["description"] = (
+                    f"Multidimensional signal for interneuron population stimulation. "
+                    f"Signal type: mixed oscillatory and noise. "
+                    f"Dimensions: {n_dimensions}. Duration: {stimulus_duration}s."
+                )
+
+                # Save population-specific metadata
+                pop_group = signal_group.create_group(f"population_{pop_name}")
+                pop_group.attrs["neuron_type"] = population.neuron_type
+                pop_group.attrs["n_features"] = population.n_features
+
+                # Save f-I parameters
+                fi_params = fi_parameters_config[population.neuron_type]
+                for param_name, param_value in fi_params.items():
+                    if isinstance(param_value, (int, float)):
+                        pop_group.attrs[param_name] = param_value
                     else:
-                        signals_group = f["Signals"]
-                    
-                    # Create signal group
-                    if signal_id in signals_group:
-                        del signals_group[signal_id]
-                    signal_group = signals_group.create_group(signal_id)
-                    
-                    # Save signal data
-                    signal_group.create_dataset("data", data=stimulus, compression="gzip")
-                    signal_group.create_dataset("processed_data", data=processed_stimulus, compression="gzip")
-                    signal_group.create_dataset("time", data=t, compression="gzip")
-                    
-                    # Save metadata
-                    signal_group.attrs["duration"] = stimulus_duration
-                    signal_group.attrs["sample_rate"] = sample_rate
-                    signal_group.attrs["sample_dt_ms"] = sample_dt_ms
-                    signal_group.attrs["n_dimensions"] = n_dimensions
-                    signal_group.attrs["norm_type"] = interneuron_modality.norm_type
-                    signal_group.attrs["temporal_smoothing"] = interneuron_modality.temporal_smoothing
-                    signal_group.attrs["description"] = (
-                        f"Multidimensional signal for interneuron population stimulation. "
-                        f"Signal type: mixed oscillatory and noise. "
-                        f"Dimensions: {n_dimensions}. Duration: {stimulus_duration}s."
-                    )
-                    
-                    # Save population-specific metadata
-                    pop_group = signal_group.create_group(f"population_{pop_name}")
-                    pop_group.attrs["neuron_type"] = population.neuron_type
-                    pop_group.attrs["n_features"] = population.n_features
-                    
-                    # Save f-I parameters
-                    fi_params = fi_parameters_config[population.neuron_type]
-                    for param_name, param_value in fi_params.items():
-                        if isinstance(param_value, (int, float)):
-                            pop_group.attrs[param_name] = param_value
-                        else:
-                            pop_group.attrs[param_name] = param_value
-            
-            comm.barrier()
+                        pop_group.attrs[param_name] = param_value
+
+        comm.barrier()
     
     if rank == 0:
         print(f"Processed {len(populations)} populations:")

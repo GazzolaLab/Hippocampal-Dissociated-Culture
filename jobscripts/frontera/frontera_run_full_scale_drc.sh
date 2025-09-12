@@ -39,8 +39,8 @@ ibrun run-network \
     --template-paths="templates" \
     --dataset-prefix="${DATA_PREFIX}" \
     --results-path=${results_path} \
-    --spike-input-path="${DATA_PREFIX}/Full_Scale/Full_Scale_CA1_dynamical_response_spike_trains_20250514.h5" \
-    --spike-input-namespace="Spatiotemporal Feature Spikes drc_features_20240514" \
+    --spike-input-path="${DATA_PREFIX}/Full_Scale/Full_Scale_CA1_dynamical_response_spike_trains_20250912.h5" \
+    --spike-input-namespace="Spatiotemporal Feature Spikes drc_features_20250912" \
     --spike-input-attr="Spike Train" \
     --coordinates-namespace="Generated Coordinates" \
     --io-size=80 \

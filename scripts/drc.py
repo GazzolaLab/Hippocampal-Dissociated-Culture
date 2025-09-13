@@ -17,7 +17,7 @@ from miv_simulator.input_features import (
     EncoderTimeConfig
     )
 from miv_simulator.input_spike_trains import generate_input_spike_trains
-from input_signals import write_signal
+from input_signals import write_signal, read_signal, list_available_signals, validate_signal, create_multidimensional_signal
 from mpi4py import MPI
 import h5py
 import logging
@@ -1617,8 +1617,6 @@ def create_dynamical_response_system(
     if population_name in env.celltypes:
         start_gid = env.celltypes[population_name]["start"]
         n_features = env.celltypes[population_name]["num"]
-    if comm.rank == 0:
-        logger.info(f"start_gid = {start_gid} n_features = {n_features}")
     
     # Create dynamical response population
     population = DynamicalResponsePopulation(
@@ -1635,7 +1633,18 @@ def create_dynamical_response_system(
         },
         random_seed=random_seed,
     )
-    
+
+    # Determine population id
+    population_info = None
+    if register_population:
+        population_info = env.register_population(population.name,
+                                                  {"All": n_features})
+        if population_info is not None:
+            start_gid = population_info['population_start_gid']
+
+    population.start_gid = start_gid
+
+    logger.info(f"start_gid = {start_gid}")
     # Generate features
     population.generate_features(start_gid=start_gid,
                                  rank=comm.rank, size=comm.size)
@@ -1646,37 +1655,23 @@ def create_dynamical_response_system(
         dt_ms=1.0,
     )
 
-    # Determine population id
-    if register_population and population not in env.Populations:
-        max_pop_enum = 0
-        for _, pop_enum in env.Populations.items():
-            max_pop_enum = max(pop_enum, max_pop_enum)
-
-        pop_id = max_pop_enum + 1
-        env.Populations[population.name] = pop_id
-        cell_distribution = {}
-        if "Cell Distribution" in env.geometry:
-            cell_distribution = env.geometry["Cell Distribution"]
-        else:
-            env.geometry["Cell Distribution"] = cell_distribution
-        cell_distribution[population.name] = {"All": n_features}
-
     
     return feature_space, spatio_temporal_modality, population, time_config
 
 
-def run_dynamical_response_characterization(signal_id,
+def run_dynamical_response_characterization(signal_id = None,
                                             dataset_prefix = "./datasets",
                                             output_prefix = ".",
                                             config_prefix = "./config",
                                             config = "Dynamical_Response_Features.yaml",
                                             population_name = "dynamical_response_features",
                                             register_population = True,
+                                            input_signal_file = None,  # Set to path of HDF5 file to read signal from
                                             stimulus_duration = 1,
                                             n_features = 150,
                                             sample_dt_ms=1.0,
                                             random_seed = 42,
-                                            n_channels = 10,
+                                            n_dimensions = 64,
                                             dry_run = False,
                                             plot = True,
                                             output_path = None,
@@ -1693,6 +1688,9 @@ def run_dynamical_response_characterization(signal_id,
     if comm is None:
         comm = MPI.COMM_WORLD
     rank = comm.rank
+    
+    if (input_signal_file is None) and (signal_id is None):
+        signal_id = "drc_signal"
     
     # np.seterr(all="raise")
     params = dict(locals())
@@ -1721,45 +1719,124 @@ def run_dynamical_response_characterization(signal_id,
     # Create a test stimulus with different spatio-temporal patterns
     duration_ms = stimulus_duration * 1000.0
     sample_rate_hz = 1000.0 / sample_dt_ms # Sample rate [Hz]
+
+    stimulus = None
+    t = None
+    signal_metadata = {}
+    input_signal_id = signal_id
+
+    # Signal input configuration
+    use_generated_signal = input_signal_file is None
+
+    # Check if we should read from file
+    if rank == 0:
+        if not use_generated_signal and input_signal_file is not None:
+            logging.info(f"Reading signal from {input_signal_file}...")
+
+            # List available signals if signal_id not specified
+            if input_signal_id is None:
+                available_signals = list_available_signals(input_signal_file)
+                if available_signals:
+                    logging.info("Available signals:")
+                    for sig_id, info in available_signals.items():
+                        logging.info(f"  - {sig_id}: shape={info['stimulus_shape']}, "
+                                     f"attrs={info['attributes']}")
+
+                    # Use the first available signal
+                    input_signal_id = list(available_signals.keys())[0]
+                    logging.info(f"Using signal: {input_signal_id}")
+                else:
+                    logging.error("No signals found in file")
+                    use_generated_signal = True
+                    
+                if input_signal_id is not None:
+                    signal_id = input_signal_id
+                    
+            # Try to read the signal
+            if input_signal_id is not None:
+                try:
+                    t, stimulus, signal_metadata = read_signal(
+                        input_signal_file, 
+                        input_signal_id, 
+                        sample_rate=sample_rate_hz
+                    )
+
+                    # Validate the signal
+                    if not validate_signal(
+                        stimulus, 
+                        expected_duration=stimulus_duration,
+                        expected_sample_rate=sample_rate_hz,
+                        min_dimensions=1
+                    ):
+                        logging.warning("Signal validation failed, falling back to generated signal")
+                        stimulus = None
+                        t = None
+                    else:
+                        # Update parameters based on read signal
+                        if len(stimulus.shape) == 1:
+                            n_dimensions = 1
+                        else:
+                            n_dimensions = stimulus.shape[1]
+
+                        stimulus_duration = stimulus.shape[0] / sample_rate_hz
+
+                        logging.info(f"Successfully loaded signal: duration={stimulus_duration:.1f} s, "
+                                     f"dimensions={n_dimensions}, sample_rate={sample_rate_hz} Hz")
+
+                except Exception as e:
+                    logging.error(f"Failed to read signal: {e}")
+                    stimulus = None
+                    t = None
+                    
+    comm.barrier()
+    signal_data = comm.bcast((stimulus, t, signal_metadata, stimulus_duration, n_dimensions), root=0)
+    stimulus, t, signal_metadata, stimulus_duration, n_dimensions = signal_data
+
+    if stimulus is not None:
+        signal_id = input_signal_id
+            
+    # Fall back to generated signal if reading failed or not requested
+    if stimulus is None:
+        if rank == 0:
+            logging.info("Generating new test signal")
+
+            t, stimulus = create_multidimensional_signal(
+                duration=stimulus_duration,
+                sample_rate=sample_rate_hz, 
+                n_dimensions=n_dimensions,
+                signal_type="mixed"
+            )
+
+            signal_metadata = {
+                'source': 'generated',
+                'signal_type': 'mixed',
+                'duration': stimulus_duration,
+                'sample_rate': sample_rate_hz,
+                'n_dimensions': n_dimensions
+            }
+    comm.barrier()
     
-    # Generate time base
-    t = np.linspace(0, stimulus_duration, int(stimulus_duration * sample_rate_hz), endpoint=False)
-    
-    # Create a stimulus with different frequencies in different regions
-    stimulus = np.zeros((int(stimulus_duration * sample_rate_hz), n_channels))
-    segment_length = len(t) // 4
-    
-    # Region 1: 5Hz in first quarter, all channels
-    stimulus[:segment_length, :] = np.sin(2 * np.pi * 5.0 * t[:segment_length, np.newaxis])
-    
-    # Region 2: 10Hz in second quarter, left channels
-    stimulus[segment_length:2*segment_length, :5] = np.sin(2 * np.pi * 10.0 * t[segment_length:2*segment_length, np.newaxis])
-    
-    # Region 3: 20Hz in third quarter, right channels
-    stimulus[2*segment_length:3*segment_length, 5:] = np.sin(2 * np.pi * 20.0 * t[2*segment_length:3*segment_length, np.newaxis])
-    
-    # Region 4: 40Hz in fourth quarter, all channels
-    stimulus[3*segment_length:, :] = np.sin(2 * np.pi * 40.0 * t[3*segment_length:, np.newaxis])
-    
-    # Add some noise
-    stimulus += np.random.normal(0, 0.1, stimulus.shape)
+    # Broadcast signal reading results to all ranks
+    if comm.size > 1:
+        signal_data = comm.bcast((stimulus, t, signal_metadata, stimulus_duration, n_dimensions), root=0)
+        stimulus, t, signal_metadata, stimulus_duration, n_dimensions = signal_data
     
     if output_prefix is not None:
         output_path = os.path.join(output_prefix, output_path)
 
-    if not dry_run:
-        output_spikes_namespace = f"Spatiotemporal Feature Spikes"
-        generate_input_spike_trains(
-            env,
-            population,
-            signal=stimulus,
-            signal_id=signal_id,
-            coords_path=None,
-            output_path=output_path,
-            output_spikes_namespace=output_spikes_namespace,
-            output_spike_train_attr_name="Spike Train",
-            **io_kwargs,
-        )
+    output_spikes_namespace = f"Spatiotemporal Feature Spikes"
+    generate_input_spike_trains(
+        env,
+        population,
+        signal=stimulus,
+        signal_id=signal_id,
+        coords_path=None,
+        output_path=output_path,
+        output_spikes_namespace=output_spikes_namespace,
+        output_spike_train_attr_name="Spike Train",
+        dry_run=dry_run,
+        **io_kwargs,
+    )
 
     export_data = None
     if rank == 0:
@@ -1830,24 +1907,18 @@ def run_dynamical_response_characterization(signal_id,
     return population, analysis_results, export_data
 
 if __name__ == "__main__":
-#    run_dynamical_response_characterization(signal_id = "test_temporal_features_20240510",
-#                                             stimulus_duration = 10,
-#                                             output_path = "dynamical_response_spike_trains_n150_10s.h5")
-
-    run_dynamical_response_characterization(signal_id = "drc_features_20240514",
+    
+    run_dynamical_response_characterization(signal_id = "drc_features_20240912",
+                                            config = "Network_Clamp_PYR_gid_48041.yaml",
                                             stimulus_duration = 10,
-                                            population_name = "PYR",
-                                            register_population = False,
-                                            config = "Full_Scale_Dynamic_Response_Features.yaml",
-                                            output_path = "PYR_dynamical_response_spike_trains_10s.h5",
-                                            dataset_prefix = "/scratch1/03320/iraikov/striped2/MiV",
-                                            output_prefix = "/scratch1/03320/iraikov/striped2/MiV/results/livn",
-                                            plot=False,
-                                            io_kwargs={'io_size': 4,
-                                                       'write_size': 50000,
-                                                       'chunk_size': 10000,
-                                                       'value_chunk_size': 100000,
-                                                       }
-                                        )
+                                            dataset_prefix = "datasets",
+                                            output_path = "dynamical_response_spike_trains_n150_10s_3.h5",
+                                            output_prefix = "datasets",
+                                            population_name = "DRC",
+                                            n_features = 150,
+                                            io_kwargs={'io_size': 1,
+                                                       'write_size': 10,
+                                                       },
+                                            dry_run = True)
 
 

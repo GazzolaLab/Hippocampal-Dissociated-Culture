@@ -39,7 +39,7 @@ from interneuron_features import (
     InterneuronResponseModel,
     INTERNEURON_FI_PARAMS
 )
-from input_signals import read_signal, validate_signal
+from input_signals import read_signal, validate_signal, list_available_signals, create_multidimensional_signal
 
 # Define a custom reduction operation that concatenates lists
 def response_concat(a, b, datatype):
@@ -74,109 +74,39 @@ sys_excepthook = sys.excepthook
 sys.excepthook = mpi_excepthook
 
 
-def create_test_multidimensional_signal(duration: float, 
-                                        sample_rate: float,
-                                        n_dimensions: int = 10,
-                                        signal_type: str = "oscillatory") -> Tuple[np.ndarray, np.ndarray]:
-    """
-    Create a test multidimensional signal for interneuron stimulation.
-    
-    Args:
-        duration: Signal duration in seconds
-        sample_rate: Sample rate in Hz
-        n_dimensions: Number of signal dimensions
-        signal_type: Type of signal ('oscillatory', 'noise', 'mixed')
-    
-    Returns:
-        Tuple of (time_vector, signal_array)
-    """
-    n_samples = int(duration * sample_rate)
-    t = np.linspace(0, duration, n_samples, endpoint=False)
-    signal = np.zeros((n_samples, n_dimensions))
-    
-    if signal_type == "oscillatory":
-        # Create oscillatory signals with different frequencies in each dimension
-        base_frequencies = np.logspace(np.log10(2), np.log10(50), n_dimensions)  # 2-50 Hz
-        
-        for dim in range(n_dimensions):
-            freq = base_frequencies[dim]
-            amplitude = 0.5 + 0.5 * np.random.rand()  # Random amplitude 0.5-1.0
-            phase = 2 * np.pi * np.random.rand()  # Random phase
-            signal[:, dim] = amplitude * np.sin(2 * np.pi * freq * t + phase)
-        
-        # Add a global modulation envelope
-        envelope_freq = 0.5  # 0.5 Hz modulation
-        envelope = 0.3 + 0.7 * (0.5 + 0.5 * np.sin(2 * np.pi * envelope_freq * t))
-        signal = signal * envelope.reshape(-1, 1)
-        
-    elif signal_type == "noise":
-        # Colored noise with different temporal correlations
-        for dim in range(n_dimensions):
-            # Generate colored noise with different correlation times
-            correlation_time = 0.01 + 0.1 * dim / n_dimensions  # 10-110 ms
-            alpha = np.exp(-1.0 / (sample_rate * correlation_time))
-            
-            white_noise = np.random.randn(n_samples)
-            colored_noise = np.zeros_like(white_noise)
-            colored_noise[0] = white_noise[0]
-            
-            for i in range(1, n_samples):
-                colored_noise[i] = alpha * colored_noise[i-1] + np.sqrt(1 - alpha**2) * white_noise[i]
-            
-            signal[:, dim] = colored_noise
-    
-    elif signal_type == "mixed":
-        # Mix of oscillatory and noise components
-        # First half dimensions: oscillatory
-        for dim in range(n_dimensions // 2):
-            freq = 5 + 10 * dim  # 5, 15, 25, ... Hz
-            amplitude = 0.7
-            signal[:, dim] = amplitude * np.sin(2 * np.pi * freq * t)
-        
-        # Second half dimensions: noise
-        for dim in range(n_dimensions // 2, n_dimensions):
-            signal[:, dim] = 0.5 * np.random.randn(n_samples)
-        
-        # Add global amplitude modulation
-        modulation = 0.5 + 0.5 * np.sin(2 * np.pi * 1.0 * t)  # 1 Hz modulation
-        signal = signal * modulation.reshape(-1, 1)
-    
-    else:
-        raise ValueError(f"Unknown signal_type: {signal_type}")
-    
-    return t, signal
-
-def run_interneuron_spike_generation(signal_id,
-                                    dataset_prefix = "./datasets",
-                                    output_prefix = ".",
-                                    config_prefix = "./config",
-                                    config = "Dynamical_Response_Features.yaml",
-                                    population_name = "IN",
-                                    neuron_type = None,
-                                    fraction_active = { 'mean': 0.9, 'std': 0.2 },
-                                    input_signal_file = None,  # Set to path of HDF5 file to read signal from
-                                    register_population = True,
-                                    stimulus_duration = 10,
-                                    n_features = 150,
-                                    sample_dt_ms=1.0,
-                                    random_seed = 42,
-                                    n_channels = 10,
-                                    dry_run = False,
-                                    plot = True,
-                                    comm = None,
-                                    io_kwargs = {
-                                        'io_size': 1,
-                                        'write_size': 1,
-                                        'chunk_size': 10000,
-                                        'value_chunk_size': 20000,
-                                    },
+def run_interneuron_spike_generation(signal_id = None,
+                                     dataset_prefix = "./datasets",
+                                     output_prefix = ".",
+                                     config_prefix = "./config",
+                                     config = "Dynamical_Response_Features.yaml",
+                                     population_name = "IN",
+                                     neuron_type = None,
+                                     fraction_active = { 'mean': 0.9, 'std': 0.2 },
+                                     input_signal_file = None,  # Set to path of HDF5 file to read signal from
+                                     register_population = True,
+                                     stimulus_duration = 10,
+                                     n_features = 150,
+                                     sample_dt_ms=1.0,
+                                     random_seed = 42,
+                                     n_channels = 64,
+                                     dry_run = False,
+                                     plot = True,
+                                     comm = None,
+                                     io_kwargs = {
+                                         'io_size': 1,
+                                         'write_size': 1,
+                                         'chunk_size': 10000,
+                                         'value_chunk_size': 20000,
+                                     },
                                 ):
     if comm is None:
         comm = MPI.COMM_WORLD
     rank = comm.rank
     
     logging.basicConfig(level=logging.INFO)
-    
+
+    if (input_signal_file is None) and (signal_id is None):
+        signal_id = "interneuron_signal"
     
     # Environment setup
     params = dict(locals())
@@ -211,7 +141,7 @@ def run_interneuron_spike_generation(signal_id,
     # Generated signal parameters
     sample_dt_ms = 1.0
     sample_rate = 1000.0 / sample_dt_ms  # Sample rate [Hz]
-    n_dimensions = 8  # Number of input signal dimensions
+    n_dimensions = n_channels  # Number of input signal dimensions
     
     # Create the interneuron modality
     interneuron_modality = InterneuronModality(
@@ -303,6 +233,7 @@ def run_interneuron_spike_generation(signal_id,
     stimulus = None
     t = None
     signal_metadata = {}
+    input_signal_id = signal_id
 
     # Check if we should read from file
     if rank == 0:
@@ -325,6 +256,9 @@ def run_interneuron_spike_generation(signal_id,
                     logging.error("No signals found in file")
                     use_generated_signal = True
 
+                if input_signal_id is not None:
+                    signal_id = input_signal_id
+                    
             # Try to read the signal
             if input_signal_id is not None:
                 try:
@@ -360,26 +294,28 @@ def run_interneuron_spike_generation(signal_id,
                     logging.error(f"Failed to read signal: {e}")
                     stimulus = None
                     t = None
+                    
+                    
     comm.barrier()
-    
-    # Broadcast signal reading results to all ranks
-    if comm.size > 1:
-        signal_data = comm.bcast((stimulus, t, signal_metadata, stimulus_duration, n_dimensions), root=0)
-        stimulus, t, signal_metadata, stimulus_duration, n_dimensions = signal_data
-    
+    signal_data = comm.bcast((stimulus, t, signal_metadata, stimulus_duration, n_dimensions), root=0)
+    stimulus, t, signal_metadata, stimulus_duration, n_dimensions = signal_data
+
+    if stimulus is not None:
+        signal_id = input_signal_id
+
     # Fall back to generated signal if reading failed or not requested
     if stimulus is None:
         if rank == 0:
             logging.info("Generating new test signal")
-        
+
             # Create test signal
-            t, stimulus = create_test_multidimensional_signal(
+            t, stimulus = create_multidimensional_signal(
                 duration=stimulus_duration,
                 sample_rate=sample_rate, 
                 n_dimensions=n_dimensions,
                 signal_type="mixed"
             )
-        
+
             signal_metadata = {
                 'source': 'generated',
                 'signal_type': 'mixed',
@@ -387,9 +323,12 @@ def run_interneuron_spike_generation(signal_id,
                 'sample_rate': sample_rate,
                 'n_dimensions': n_dimensions
             }
+    comm.barrier()
+    
+    # Broadcast signal reading results to all ranks
+    if comm.size > 1:
         signal_data = comm.bcast((stimulus, t, signal_metadata, stimulus_duration, n_dimensions), root=0)
         stimulus, t, signal_metadata, stimulus_duration, n_dimensions = signal_data
-        
     
     # Process the stimulus using the modality
     processed_stimulus = interneuron_modality.preprocess_signal(stimulus)
@@ -562,79 +501,77 @@ def run_interneuron_spike_generation(signal_id,
     comm.barrier()
     
     # Generate actual spike trains (if not dry run)
-    if not dry_run:
-        for pop_name, population in populations.items():
-            output_path = os.path.join(
-                output_prefix, 
-                f"{pop_name}_{signal_id}_interneuron_spikes.h5"
-            )
-            
-            if rank == 0:
-                logging.info(f"Generating spike trains for {pop_name}...")
-            
-            generate_input_spike_trains(
-                env,
-                population,
-                signal=stimulus,
-                signal_id=signal_id,
-                coords_path=None,
-                output_path=output_path,
-                output_spikes_namespace="Interneuron Spikes",
-                output_spike_train_attr_name="Spike Train",
-                io_size=4,
-                write_size=50000,
-                chunk_size=10000,
-                value_chunk_size=200000,
-            )
+    for pop_name, population in populations.items():
+        output_path = os.path.join(
+            output_prefix, 
+            f"{pop_name}_{signal_id}_interneuron_spikes.h5"
+        )
+
+        if rank == 0:
+            logging.info(f"Generating spike trains for {pop_name}...")
+
+        generate_input_spike_trains(
+            env,
+            population,
+            signal=stimulus,
+            signal_id=signal_id,
+            coords_path=None,
+            output_path=output_path,
+            output_spikes_namespace="Interneuron Spikes",
+            output_spike_train_attr_name="Spike Train",
+            dry_run=dry_run,
+            **io_kwargs
+        )
+        if rank == 0:
             print(f"\nSpike trains saved to: {output_path}")
-            
-            # Save signal and metadata
-            if rank == 0:
-                logging.info(f"Saving signal metadata to {output_path}")
-                with h5py.File(output_path, "a") as f:
-                    # Create signals group
-                    if "Signals" not in f:
-                        signals_group = f.create_group("Signals")
+
+        # Save signal and metadata
+        if (not dry_run) and rank == 0:
+            logging.info(f"Saving signal metadata to {output_path}")
+            with h5py.File(output_path, "a") as f:
+                # Create signals group
+                if "Signals" not in f:
+                    signals_group = f.create_group("Signals")
+                else:
+                    signals_group = f["Signals"]
+
+                # Create signal group
+                if signal_id in signals_group:
+                    del signals_group[signal_id]
+                signal_group = signals_group.create_group(signal_id)
+
+                # Save signal data
+                signal_group.create_dataset("data", data=stimulus, compression="gzip")
+                signal_group.create_dataset("processed_data", data=processed_stimulus, compression="gzip")
+                signal_group.create_dataset("time", data=t, compression="gzip")
+
+                # Save metadata
+                signal_group.attrs["duration"] = stimulus_duration
+                signal_group.attrs["sample_rate"] = sample_rate
+                signal_group.attrs["sample_dt_ms"] = sample_dt_ms
+                signal_group.attrs["n_dimensions"] = n_dimensions
+                signal_group.attrs["norm_type"] = interneuron_modality.norm_type
+                signal_group.attrs["temporal_smoothing"] = interneuron_modality.temporal_smoothing
+                signal_group.attrs["description"] = (
+                    f"Multidimensional signal for interneuron population stimulation. "
+                    f"Signal type: mixed oscillatory and noise. "
+                    f"Dimensions: {n_dimensions}. Duration: {stimulus_duration}s."
+                )
+
+                # Save population-specific metadata
+                pop_group = signal_group.create_group(f"population_{pop_name}")
+                pop_group.attrs["neuron_type"] = population.neuron_type
+                pop_group.attrs["n_features"] = population.n_features
+
+                # Save f-I parameters
+                fi_params = fi_parameters_config[population.neuron_type]
+                for param_name, param_value in fi_params.items():
+                    if isinstance(param_value, (int, float)):
+                        pop_group.attrs[param_name] = param_value
                     else:
-                        signals_group = f["Signals"]
-                    
-                    # Create signal group
-                    if signal_id in signals_group:
-                        del signals_group[signal_id]
-                    signal_group = signals_group.create_group(signal_id)
-                    
-                    # Save signal data
-                    signal_group.create_dataset("data", data=stimulus, compression="gzip")
-                    signal_group.create_dataset("processed_data", data=processed_stimulus, compression="gzip")
-                    signal_group.create_dataset("time", data=t, compression="gzip")
-                    
-                    # Save metadata
-                    signal_group.attrs["duration"] = stimulus_duration
-                    signal_group.attrs["sample_rate"] = sample_rate
-                    signal_group.attrs["sample_dt_ms"] = sample_dt_ms
-                    signal_group.attrs["n_dimensions"] = n_dimensions
-                    signal_group.attrs["norm_type"] = interneuron_modality.norm_type
-                    signal_group.attrs["temporal_smoothing"] = interneuron_modality.temporal_smoothing
-                    signal_group.attrs["description"] = (
-                        f"Multidimensional signal for interneuron population stimulation. "
-                        f"Signal type: mixed oscillatory and noise. "
-                        f"Dimensions: {n_dimensions}. Duration: {stimulus_duration}s."
-                    )
-                    
-                    # Save population-specific metadata
-                    pop_group = signal_group.create_group(f"population_{pop_name}")
-                    pop_group.attrs["neuron_type"] = population.neuron_type
-                    pop_group.attrs["n_features"] = population.n_features
-                    
-                    # Save f-I parameters
-                    fi_params = fi_parameters_config[population.neuron_type]
-                    for param_name, param_value in fi_params.items():
-                        if isinstance(param_value, (int, float)):
-                            pop_group.attrs[param_name] = param_value
-                        else:
-                            pop_group.attrs[param_name] = param_value
-            
-            comm.barrier()
+                        pop_group.attrs[param_name] = param_value
+
+        comm.barrier()
     
     if rank == 0:
         print(f"Processed {len(populations)} populations:")
@@ -649,28 +586,13 @@ def run_interneuron_spike_generation(signal_id,
 if __name__ == "__main__":
     run_interneuron_spike_generation(signal_id = "test_interneuron_features_20250905",
                                      neuron_type = "PV",
-                                     population_name = "PVBC",
+                                     population_name = "IN",
                                      config = "Network_Clamp_PYR_gid_48041.yaml",
                                      dataset_prefix = "datasets",
                                      stimulus_duration = 10,
                                      output_prefix = "datasets",
-                                     register_population = False,
+                                     register_population = True,
+                                     io_kwargs={'io_size': 1,
+                                                'write_size': 10,
+                                                },
                                      dry_run = False)
-                                     
-
-    
-    # run_interneuron_spike_generation(signal_id = "drc_features_20250905",
-    #                                  stimulus_duration = 10,
-    #                                  population_name = "PYR",
-    #                                  register_population = False,
-    #                                  config = "Full_Scale_Dynamic_Response_Features.yaml",
-    #                                  output_path = "PYR_dynamical_response_spike_trains_10s.h5",
-    #                                  dataset_prefix = "/scratch1/03320/iraikov/striped2/MiV",
-    #                                  output_prefix = "/scratch1/03320/iraikov/striped2/MiV/results/livn",
-    #                                  plot=False,
-    #                                  io_kwargs={'io_size': 4,
-    #                                             'write_size': 50000,
-    #                                             'chunk_size': 10000,
-    #                                             'value_chunk_size': 100000,
-    #                                             }
-    #                                  )

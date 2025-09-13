@@ -11,6 +11,79 @@ import logging
 from typing import Tuple, List, Optional, Dict, Any
 
 
+def create_multidimensional_signal(duration: float, 
+                                   sample_rate: float,
+                                   n_dimensions: int = 64,
+                                   signal_type: str = "oscillatory") -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Create a test multidimensional signal for interneuron stimulation.
+    
+    Args:
+        duration: Signal duration in seconds
+        sample_rate: Sample rate in Hz
+        n_dimensions: Number of signal dimensions
+        signal_type: Type of signal ('oscillatory', 'noise', 'mixed')
+    
+    Returns:
+        Tuple of (time_vector, signal_array)
+    """
+    n_samples = int(duration * sample_rate)
+    t = np.linspace(0, duration, n_samples, endpoint=False)
+    signal = np.zeros((n_samples, n_dimensions))
+    
+    if signal_type == "oscillatory":
+        # Create oscillatory signals with different frequencies in each dimension
+        base_frequencies = np.logspace(np.log10(2), np.log10(50), n_dimensions)  # 2-50 Hz
+        
+        for dim in range(n_dimensions):
+            freq = base_frequencies[dim]
+            amplitude = 0.5 + 0.5 * np.random.rand()  # Random amplitude 0.5-1.0
+            phase = 2 * np.pi * np.random.rand()  # Random phase
+            signal[:, dim] = amplitude * np.sin(2 * np.pi * freq * t + phase)
+        
+        # Add a global modulation envelope
+        envelope_freq = 0.5  # 0.5 Hz modulation
+        envelope = 0.3 + 0.7 * (0.5 + 0.5 * np.sin(2 * np.pi * envelope_freq * t))
+        signal = signal * envelope.reshape(-1, 1)
+        
+    elif signal_type == "noise":
+        # Colored noise with different temporal correlations
+        for dim in range(n_dimensions):
+            # Generate colored noise with different correlation times
+            correlation_time = 0.01 + 0.1 * dim / n_dimensions  # 10-110 ms
+            alpha = np.exp(-1.0 / (sample_rate * correlation_time))
+            
+            white_noise = np.random.randn(n_samples)
+            colored_noise = np.zeros_like(white_noise)
+            colored_noise[0] = white_noise[0]
+            
+            for i in range(1, n_samples):
+                colored_noise[i] = alpha * colored_noise[i-1] + np.sqrt(1 - alpha**2) * white_noise[i]
+            
+            signal[:, dim] = colored_noise
+    
+    elif signal_type == "mixed":
+        # Mix of oscillatory and noise components
+        # First half dimensions: oscillatory
+        for dim in range(n_dimensions // 2):
+            freq = 5 + 10 * dim  # 5, 15, 25, ... Hz
+            amplitude = 0.7
+            signal[:, dim] = amplitude * np.sin(2 * np.pi * freq * t)
+        
+        # Second half dimensions: noise
+        for dim in range(n_dimensions // 2, n_dimensions):
+            signal[:, dim] = 0.5 * np.random.randn(n_samples)
+        
+        # Add global amplitude modulation
+        modulation = 0.5 + 0.5 * np.sin(2 * np.pi * 1.0 * t)  # 1 Hz modulation
+        signal = signal * modulation.reshape(-1, 1)
+    
+    else:
+        raise ValueError(f"Unknown signal_type: {signal_type}")
+    
+    return t, signal
+
+
 def list_available_signals(h5_file_path: str) -> Dict[str, Dict[str, Any]]:
     """
     List all available signals in an HDF5 file with their metadata.
@@ -67,13 +140,14 @@ def write_signal(h5_file_path: str,
                  name: str,
                  dimensions: List[Dict[str, Any]],
                  signal_id: str,
-                 stimulus: np.ndarray):
+                 stimulus: np.ndarray,
+                 dimension_stats: Optional[Dict[str, Any]] = None):
 
     assert validate_signal(stimulus)
 
     _, n_features = stimulus.shape
     
-    with h5py.File(output_path, "a") as f:
+    with h5py.File(h5_file_path, "a") as f:
             # Create a group for signals if it doesn't exist
             if "Signals" not in f:
                 signals_group = f.create_group("Signals")
@@ -94,7 +168,7 @@ def write_signal(h5_file_path: str,
 
             # Store dimensions as a dataset
             dims_data = []
-            for dim in self.dimensions:
+            for dim in dimensions:
                 dims_data.append({
                     'name': dim['name'], 
                     'range_min': dim['range'][0],
@@ -126,16 +200,17 @@ def write_signal(h5_file_path: str,
             signal_group.create_dataset('dimensions', data=dim_array)
 
             # Store dimension_stats as a group with datasets
-            dim_stats_group = signal_group.create_group('dimension_stats')
-            for dim_name, stats in self.dimension_stats.items():
-                dim_group = dim_stats_group.create_group(dim_name)
-                for stat_name, stat_value in stats.items():
-                    if stat_name == 'values' and stat_value:
-                        # Save values as a dataset
-                        dim_group.create_dataset('values', data=np.array(stat_value))
-                    elif stat_value is not None:
-                        # Save other stats as attributes
-                        dim_group.attrs[stat_name] = stat_value
+            if dimension_stats is not None:
+                dim_stats_group = signal_group.create_group('dimension_stats')
+                for dim_name, stats in dimension_stats.items():
+                    dim_group = dim_stats_group.create_group(dim_name)
+                    for stat_name, stat_value in stats.items():
+                        if stat_name == 'values' and stat_value:
+                            # Save values as a dataset
+                            dim_group.create_dataset('values', data=np.array(stat_value))
+                        elif stat_value is not None:
+                            # Save other stats as attributes
+                            dim_group.attrs[stat_name] = stat_value
 
     
 

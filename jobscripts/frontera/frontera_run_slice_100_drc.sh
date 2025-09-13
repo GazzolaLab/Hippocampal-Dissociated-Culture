@@ -39,8 +39,8 @@ ibrun run-network \
     --template-paths="templates" \
     --dataset-prefix="${DATA_PREFIX}" \
     --results-path=${results_path} \
-    --spike-input-path="${DATA_PREFIX}/Slice/CA1_Slice_100_dynamical_response_features.h5" \
-    --spike-input-namespace="Spatiotemporal Feature Spikes drc_features_20240514" \
+    --spike-input-path="${DATA_PREFIX}/Slice/CA1_Slice_100_dynamical_response_features_20250912.h5" \
+    --spike-input-namespace="Spatiotemporal Feature Spikes drc_features_20250912" \
     --spike-input-attr="Spike Train" \
     --coordinates-namespace="Generated Coordinates" \
     --microcircuit-inputs \

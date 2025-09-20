@@ -140,8 +140,13 @@ def process_model_spatiotemporal_responses(
         signal_group = f[f'Signals/{input_signal_id}']
         
         # Get basic metadata
-        input_signal = signal_group['data'][:]
-        
+        if 'data' in signal_group:
+            input_signal = signal_group['data'][:]
+        elif 'stimulus' in signal_group:
+            input_signal = signal_group['stimulus'][:]
+        else:
+            raise RuntimeError(f"Unable to find signal data in group {signal_group}")
+            
         # Get dimensions metadata
         dimensions = signal_group['dimensions'][:]
         
@@ -1060,13 +1065,13 @@ def plot_dynamic_spatiotemporal_responses(processed_data):
     if 'signal' in input_metadata and input_metadata['signal'] is not None:
         ax2 = fig.add_subplot(3, 1, 2)
         
-        signal = input_metadata['signal']
+        signal_data = input_metadata['signal']
         
         # If signal is 2D, plot first few channels
-        if len(signal.shape) > 1:
-            max_channels = min(5, signal.shape[1])
+        if len(signal_data.shape) > 1:
+            max_channels = min(5, signal_data.shape[1])
             for ch in range(max_channels):
-                ax2.plot(signal[:, ch], label=f'Channel {ch}', alpha=0.7)
+                ax2.plot(signal_data[:, ch], label=f'Channel {ch}', alpha=0.7)
             ax2.legend()
         else:
             ax2.plot(signal)
@@ -1106,6 +1111,7 @@ def analyze_spatiotemporal_responses(model_output_path,
                                      time_variable="t",
                                      include_artificial=True,
                                      output_dir=None,
+                                     fig_format='svg',
                                      analyses=['tuning_curves',
                                                'sensitivity_analysis',
                                                'receptive_fields',
@@ -1195,7 +1201,7 @@ def analyze_spatiotemporal_responses(model_output_path,
         os.makedirs(output_dir, exist_ok=True)
         
         for name, fig in figures.items():
-            fig.savefig(os.path.join(output_dir, f"{name}.svg"), dpi=600, bbox_inches='tight')
+            fig.savefig(os.path.join(output_dir, f"{name}.{fig_format}"), dpi=600, bbox_inches='tight')
             plt.close(fig)
     
     return {
@@ -1204,14 +1210,14 @@ def analyze_spatiotemporal_responses(model_output_path,
     }
 
 if __name__ == "__main__":
-    # Test usage
     analyze_spatiotemporal_responses(
-        model_output_path = "./results/Full_Scale_Spatiotemporal_Features/Full_Scale_results.h5",
+        model_output_path = "./results/Full_Scale_Dynamic_Response_Features_7341938/Full_Scale_results.h5",
         model_output_namespace_id = "Spike Events",
-        input_features_path = "./input/EC_spatiotemporal_input_spike_trains.h5",
-        input_signal_id = "test_spatiotemporal_features_20250515",
+        input_features_path = "./datasets/Full_Scale_CA1_dynamical_response_spike_trains_20250912.h5",
+        input_signal_id = "drc_features_20250912",
         populations = ["PYR"],
         include_artificial = False,
         output_dir="figures/spatiotemporal_analysis",
+        fig_format="png",
         analyses=['tuning_curves', 'sensitivity_analysis', 'response_examples', 'dynamic_responses']
     )

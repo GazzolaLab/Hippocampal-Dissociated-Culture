@@ -25,6 +25,77 @@ logging.basicConfig(level=logging.INFO)
 
 logger = logging.getLogger('drc')
 
+# HDF5 helper procedures
+
+def h5_create_dataset(group, name, data):
+    """
+    Create a new dataset in the HDF5 group.
+    
+    Parameters:
+    -----------
+    group : h5py.Group
+        HDF5 group to create dataset in
+    name : str
+        Name of the dataset
+    data : np.ndarray
+        Data to write
+    """
+    if data.ndim == 1:
+        maxshape = (None,)
+        chunks = (min(1000, max(1, len(data))),)
+    else:
+        maxshape = (None,) + data.shape[1:]
+        chunks = (min(1000, max(1, data.shape[0])),) + data.shape[1:]
+    
+    dataset = group.create_dataset(
+        name, 
+        data=data,
+        maxshape=maxshape,
+        chunks=chunks,
+        compression='gzip',
+        compression_opts=9
+    )
+    
+    logger.debug(f"Created dataset {name} with shape {data.shape}")
+
+def h5_append_to_dataset(group, name, new_data):
+    """
+    Append data to an existing dataset.
+    
+    Parameters:
+    -----------
+    group : h5py.Group
+        HDF5 group containing the dataset
+    name : str
+        Name of the dataset
+    new_data : np.ndarray
+        New data to append
+    """
+    dataset = group[name]
+    
+    # Check compatibility
+    if new_data.ndim != dataset.ndim:
+        raise ValueError(f"Cannot append data with {new_data.ndim} dimensions to dataset with {dataset.ndim} dimensions")
+    
+    if new_data.ndim > 1 and new_data.shape[1:] != dataset.shape[1:]:
+        raise ValueError(f"Cannot append data with shape {new_data.shape[1:]} to dataset with shape {dataset.shape[1:]}")
+    
+    # Check dtype compatibility
+    if new_data.dtype != dataset.dtype:
+        logger.warning(f"Data type mismatch for {name}: dataset={dataset.dtype}, new_data={new_data.dtype}")
+        # Try to convert new data to match dataset dtype
+        try:
+            new_data = new_data.astype(dataset.dtype)
+        except Exception as e:
+            raise ValueError(f"Cannot convert new data type to match dataset: {e}")
+    
+    # Resize dataset and append
+    old_size = dataset.shape[0]
+    new_size = old_size + new_data.shape[0]
+    dataset.resize((new_size,) + dataset.shape[1:])
+    dataset[old_size:new_size] = new_data
+    
+    logger.debug(f"Appended {new_data.shape[0]} rows to dataset {name}, new size: {new_size}")
 
 # Define custom reduction operations that concatenate lists and merge dictionaries
 def list_concat(a, b, datatype):
@@ -1450,6 +1521,131 @@ class DynamicalResponsePopulation(InputFeaturePopulation):
         plt.tight_layout()
         return fig
 
+
+    def _prepare_feature_data_export(self, feature_data):
+        """
+        Prepare feature data for HDF5 storage by handling None values and ensuring consistent types.
+
+        Parameters:
+        -----------
+        feature_data : Dict
+            Dictionary containing feature data with potential None values
+
+        Returns:
+        --------
+        Dict
+            Processed feature data suitable for HDF5 storage
+        """
+        processed_data = {}
+
+        for key, values in feature_data.items():
+            if key == 'gids':
+                # GIDs should be integers
+                processed_data[key] = np.array(values, dtype=np.int64)
+            elif key == 'positions':
+                # Positions are arrays of coordinates
+                if values:
+                    max_dims = max(len(pos) for pos in values)
+                    position_array = np.full((len(values), max_dims), np.nan, dtype=np.float64)
+                    for i, pos in enumerate(values):
+                        position_array[i, :len(pos)] = pos
+                    processed_data[key] = position_array
+                else:
+                    processed_data[key] = np.array([]).reshape(0, 0)
+            else:
+                # Handle metadata and metric values
+                if not values:  # Empty list
+                    processed_data[key] = np.array([])
+                    continue
+
+                # Check if all values are numeric or can be converted to numeric
+                try:
+                    # Try to convert to float, replacing None with NaN
+                    numeric_values = []
+                    for val in values:
+                        if val is None:
+                            numeric_values.append(np.nan)
+                        else:
+                            numeric_values.append(float(val))
+                    processed_data[key] = np.array(numeric_values, dtype=np.float64)
+                except (ValueError, TypeError):
+                    # Handle as string data
+                    string_values = []
+                    for val in values:
+                        if val is None:
+                            string_values.append('')
+                        else:
+                            string_values.append(str(val))
+                    # Use variable-length string dtype for HDF5 compatibility
+                    processed_data[key] = np.array(string_values, dtype=h5py.special_dtype(vlen=str))
+
+        return processed_data
+
+    def _export_feature_data(self, output_path, signal_id, feature_data):
+        """
+        Write feature data to the Signals namespace in HDF5 file, with append support.
+
+        Parameters:
+        -----------
+        output_path : str
+            Path to the HDF5 file
+        signal_id : str
+            Signal identifier
+        feature_data : Dict
+            Dictionary containing feature data to write
+        """
+        if not feature_data['gids']:  # No features to write
+            logger.info("No feature data to write")
+            return
+
+        processed_data = self._prepare_feature_data_export(feature_data)
+
+        with h5py.File(output_path, 'a') as f:  # Open in append mode
+            # Create Signals group if it doesn't exist
+            if 'Signals' not in f:
+                signals_group = f.create_group('Signals')
+            else:
+                signals_group = f['Signals']
+
+            # Create signal-specific group if it doesn't exist
+            if signal_id not in signals_group:
+                signal_group = signals_group.create_group(signal_id)
+            else:
+                signal_group = signals_group[signal_id]
+
+            # Create feature_data group if it doesn't exist
+            if 'feature_data' not in signal_group:
+                feature_group = signal_group.create_group('feature_data')
+            else:
+                feature_group = signal_group['feature_data']
+
+            # Write or append each dataset
+            for key, data in processed_data.items():
+                if len(data) == 0:  # Skip empty datasets
+                    continue
+
+                if key in feature_group:
+                    # Dataset exists, append data
+                    h5_append_to_dataset(feature_group, key, data)
+                else:
+                    # Create new dataset
+                    h5_create_dataset(feature_group, key, data)
+
+            # Store metadata about dimensions (but not population name)
+            if 'dimensions_info' not in feature_group.attrs:
+                dimensions_info = []
+                for dim in self.dimensions:
+                    dim_info = {
+                        'name': dim['name'],
+                        'range': dim['range'],
+                        'scale': dim.get('scale', 'linear'),
+                        'units': dim.get('units', '')
+                    }
+                    dimensions_info.append(str(dim_info))
+                feature_group.attrs['dimensions_info'] = dimensions_info
+
+            logger.info(f"Feature data written to {output_path}/Signals/{signal_id}/feature_data")
+    
     def export_metadata(self, signal_id, stimulus, output_path=None):
         """
         Export feature population data.
@@ -1528,6 +1724,7 @@ class DynamicalResponsePopulation(InputFeaturePopulation):
         if output_path:
             write_signal(output_path, self.name, self.dimensions,
                          signal_id, stimulus)
+            self._export_feature_data(output_path, signal_id, feature_data)
 
         return export_data
 
@@ -1908,17 +2105,17 @@ def run_dynamical_response_characterization(signal_id = None,
 
 if __name__ == "__main__":
     
-    run_dynamical_response_characterization(signal_id = "drc_features_20240912",
+    run_dynamical_response_characterization(signal_id = "drc_features_20240920",
                                             config = "Network_Clamp_PYR_gid_48041.yaml",
                                             stimulus_duration = 10,
-                                            dataset_prefix = "datasets",
-                                            output_path = "dynamical_response_spike_trains_n150_10s_3.h5",
+                                            dataset_prefix = "/home/igr/Data/projects/Hippocampal-Dissociated-Culture/datasets/",
+                                            output_path = "dynamical_response_spike_trains_n150_10s_4.h5",
                                             output_prefix = "datasets",
                                             population_name = "DRC",
                                             n_features = 150,
                                             io_kwargs={'io_size': 1,
                                                        'write_size': 10,
                                                        },
-                                            dry_run = True)
+                                            dry_run = False)
 
 

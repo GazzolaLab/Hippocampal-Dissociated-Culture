@@ -1869,6 +1869,7 @@ def run_dynamical_response_characterization(signal_id = None,
                                             sample_dt_ms=1.0,
                                             random_seed = 42,
                                             n_dimensions = 64,
+                                            generate_spikes = True,
                                             dry_run = False,
                                             plot = True,
                                             output_path = None,
@@ -2022,18 +2023,19 @@ def run_dynamical_response_characterization(signal_id = None,
         output_path = os.path.join(output_prefix, output_path)
 
     output_spikes_namespace = f"Spatiotemporal Feature Spikes"
-    generate_input_spike_trains(
-        env,
-        population,
-        signal=stimulus,
-        signal_id=signal_id,
-        coords_path=None,
-        output_path=output_path,
-        output_spikes_namespace=output_spikes_namespace,
-        output_spike_train_attr_name="Spike Train",
-        dry_run=dry_run,
-        **io_kwargs,
-    )
+    if generate_spikes:
+        generate_input_spike_trains(
+            env,
+            population,
+            signal=stimulus,
+            signal_id=signal_id,
+            coords_path=None,
+            output_path=output_path,
+            output_spikes_namespace=output_spikes_namespace,
+            output_spike_train_attr_name="Spike Train",
+            dry_run=dry_run,
+            **io_kwargs,
+        )
 
     export_data = None
     if rank == 0:

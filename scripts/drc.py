@@ -3,6 +3,7 @@ import sys
 import numpy as np
 from typing import Dict, List, Optional, Tuple, Any, Callable, Union
 from collections import defaultdict
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 from scipy import signal as sp_signal
 from dataclasses import dataclass, field
@@ -24,6 +25,21 @@ import logging
 logging.basicConfig(level=logging.INFO)
 
 logger = logging.getLogger('drc')
+
+plt.style.use('ggplot')
+SMALL_SIZE = 14
+MEDIUM_SIZE = 16
+BIGGER_SIZE = 18
+
+plt.rc('font', size=SMALL_SIZE)
+plt.rc('axes', titlesize=MEDIUM_SIZE)
+plt.rc('axes', labelsize=MEDIUM_SIZE)
+plt.rc('xtick', labelsize=SMALL_SIZE)
+plt.rc('ytick', labelsize=SMALL_SIZE)
+plt.rc('legend', fontsize=SMALL_SIZE)
+plt.rc('figure', titlesize=MEDIUM_SIZE)
+
+mpl.rcParams['font.family'] = 'sans-serif'
 
 # HDF5 helper procedures
 
@@ -734,7 +750,7 @@ class DynamicalResponsePopulation(InputFeaturePopulation):
                 # Higher priority dimensions get smaller jitter for more uniform coverage
                 jitter_scale = 0.45
                 if i in high_priority_dims:
-                    jitter_scale = 0.35
+                    jitter_scale = 0.25
 
                 jitter[:, i] = self.local_random.uniform(-jitter_scale, jitter_scale, 
                                                         len(positions_grid)) * cell_size
@@ -1036,6 +1052,7 @@ class DynamicalResponsePopulation(InputFeaturePopulation):
         --------
         matplotlib.figure.Figure
             Generated figure
+
         """
         if metrics_dict is None:
             metrics_dict = self.response_metrics
@@ -1862,6 +1879,7 @@ def run_dynamical_response_characterization(signal_id = None,
                                             config_prefix = "./config",
                                             config = "Dynamical_Response_Features.yaml",
                                             population_name = "dynamical_response_features",
+                                            sampling_strategy = "stratified",
                                             register_population = True,
                                             input_signal_file = None,  # Set to path of HDF5 file to read signal from
                                             stimulus_duration = 1,
@@ -1907,6 +1925,7 @@ def run_dynamical_response_characterization(signal_id = None,
         sample_dt_ms=sample_dt_ms,
         random_seed=random_seed,
         register_population=register_population,
+        sampling_strategy=sampling_strategy
     )
 
     n_features = population.n_features
@@ -2002,7 +2021,9 @@ def run_dynamical_response_characterization(signal_id = None,
                 duration=stimulus_duration,
                 sample_rate=sample_rate_hz, 
                 n_dimensions=n_dimensions,
-                signal_type="mixed"
+                signal_type="mixed",
+                random_seed=random_seed,
+                plot=plot
             )
 
             signal_metadata = {
@@ -2059,9 +2080,10 @@ def run_dynamical_response_characterization(signal_id = None,
         
     if plot and (rank == 0):
 
-        fig1 = population.plot_responses(response_metrics)
-        fig1a = population.plot_responses(response_metrics, plot_dimensions=['temporal_frequency',
-                                                                            'spatial_position'])
+        
+        fig1a = population.plot_responses(response_metrics)
+        fig1b = population.plot_responses(response_metrics, plot_dimensions=['temporal_frequency',
+                                                                             'spatial_position'])
     
         # Show population tuning curves
         fig2 = population.plot_population_tuning('temporal_frequency', metric='mean_activation',
@@ -2111,9 +2133,11 @@ if __name__ == "__main__":
                                             config = "Network_Clamp_PYR_gid_48041.yaml",
                                             stimulus_duration = 10,
                                             dataset_prefix = "/home/igr/Data/projects/Hippocampal-Dissociated-Culture/datasets/",
-                                            output_path = "dynamical_response_spike_trains_n150_10s_4.h5",
+                                            output_path = "dynamical_response_spike_trains_n150_10s_5.h5",
                                             output_prefix = "datasets",
                                             population_name = "DRC",
+                                            register_population = True,
+                                            sampling_strategy = "random",
                                             n_features = 150,
                                             io_kwargs={'io_size': 1,
                                                        'write_size': 10,

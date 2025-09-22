@@ -1,7 +1,10 @@
 import os
 import sys
-from typing import List, Optional, Tuple, Dict, Any
+import warnings
+from typing import List, Optional, Tuple, Dict, Any, TypeVar, Iterator, Callable
 from collections import defaultdict
+from functools import reduce
+import random
 from mpi4py import MPI
 import numpy as np
 from scipy import signal
@@ -27,6 +30,10 @@ from neuroh5.io import (
 from miv_simulator import spikedata
 from tqdm import tqdm
 
+K = TypeVar('K')  # Key type
+V = TypeVar('V')  # Value type
+T = TypeVar('T')  # Generic type
+
 plt.style.use('ggplot')
 SMALL_SIZE = 14
 MEDIUM_SIZE = 16
@@ -43,6 +50,55 @@ plt.rc('figure', titlesize=MEDIUM_SIZE)
 mpl.rcParams['font.family'] = 'sans-serif'
 
 
+def reservoir_sample_dict(
+    data: Dict[K, V], 
+    n: int, 
+    extract_fn: Callable[[K, V], T] = lambda k, v: (k, v),
+    seed: Optional[int] = None
+) -> List[T]:
+    """
+    Uniform reservoir sampling of n items from a dictionary.
+    
+    Args:
+        data: Input dictionary to sample from
+        n: Number of items to sample
+        extract_fn: Function to extract desired value from (key, value) pair
+                   Default returns (key, value) tuples
+        seed: Random seed for reproducibility
+    
+    Returns:
+        List of n sampled items (or fewer if dict has < n items)
+    """
+    if seed is not None:
+        random.seed(seed)
+    
+    if n <= 0:
+        return []
+    
+    items = list(data.items())
+    if len(items) <= n:
+        return [extract_fn(k, v) for k, v in items]
+    
+    def update_reservoir(state: Tuple[List[T], int], item: Tuple[K, V]) -> Tuple[List[T], int]:
+        reservoir, i = state
+        key, value = item
+        
+        if i < n:
+            # Fill initial reservoir
+            return reservoir + [extract_fn(key, value)], i + 1
+        else:
+            # Apply reservoir sampling rule
+            j = random.randint(0, i)
+            if j < n:
+                new_reservoir = reservoir.copy()
+                new_reservoir[j] = extract_fn(key, value)
+                return new_reservoir, i + 1
+            return reservoir, i + 1
+    
+    final_reservoir, _ = reduce(update_reservoir, items, ([], 0))
+    return dict(final_reservoir)
+
+
 def process_model_spatiotemporal_responses(
     model_output_path,
     model_output_namespace_id,
@@ -52,6 +108,8 @@ def process_model_spatiotemporal_responses(
     time_range=None,
     time_variable="t",
     include_artificial=True,
+    max_gids=None,
+    sample_seed=None,
     **kwargs,
 ):
     """
@@ -119,16 +177,9 @@ def process_model_spatiotemporal_responses(
     spkpoplst = spkdata["spkpoplst"]
     spkindlst = spkdata["spkindlst"]
     spktlst = spkdata["spktlst"]
-    num_cell_spks = spkdata["num_cell_spks"]
-    pop_active_cells = spkdata["pop_active_cells"]
     tmin = spkdata["tmin"]
     tmax = spkdata["tmax"]
     simulation_duration = tmax - tmin
-    fraction_active = {
-        pop_name: float(len(pop_active_cells[pop_name]))
-        / float(pop_num_cells[pop_name])
-        for pop_name in include
-    }
 
     pop_spk_dict = {
         pop_name: (pop_spkinds, pop_spkts)
@@ -181,12 +232,15 @@ def process_model_spatiotemporal_responses(
         
         pop_spkinds, pop_spkts = pop_spk_dict[pop_name]
         gid_spike_dict = spikedata.make_spike_dict(pop_spkinds, pop_spkts)
+
+        if max_gids is not None:
+            gid_spike_dict = reservoir_sample_dict(gid_spike_dict, max_gids, seed = sample_seed)
         
         all_spikes = pop_spkts
         cell_metrics = {}
 
         # basic cell metrics
-        for gid, spike_times in gid_spike_dict.items():
+        for gid, spike_times in tqdm(gid_spike_dict.items(), desc="Computing basic cell metrics"):
             if len(spike_times) == 0:
                 cell_metrics[gid] = {
                     'firing_rate': 0,
@@ -229,7 +283,7 @@ def process_model_spatiotemporal_responses(
         all_spikes = np.array(sorted(all_spikes))
         bin_size = 10  # ms
         n_bins = int(simulation_duration / bin_size)
-        pop_rate, bin_edges = np.histogram(
+        pop_rate, pop_bin_edges = np.histogram(
             all_spikes, bins=n_bins, range=(0, simulation_duration)
         )
 
@@ -238,55 +292,70 @@ def process_model_spatiotemporal_responses(
         if n_cells > 0:
             pop_rate = pop_rate / (bin_size/1000) / n_cells  # Hz per cell
         
-        # Connect the spike responses to features based on metadata
+        # Precompute dimensional binning information
+        precomputed_dims = {}
+        
         if feature_data:
-            # If we have feature GIDs and dimensions, correlate them with spiking activity
+            print("Precomputing dimensional binning information...")
             
             # Extract feature dimension data
             gids = feature_data.get('gids', [])
             positions = feature_data.get('positions', [])
             
-            # Find key dimensions
-            temporal_dim = next((name for name in dim_info if 'temporal' in name.lower() and 'frequency' not in name.lower()), None)
-            freq_dim = next((name for name in dim_info if 'frequency' in name.lower()), None)
-            spatial_dim = next((name for name in dim_info if 'spatial' in name.lower() and 'width' not in name.lower()), None)
-            width_dim = next((name for name in dim_info if 'width' in name.lower()), None)
+            # Precompute binning for each dimension
+            for dim_name, dim_data in tqdm(dim_info.items(), desc="Precomputing dimensions"):
+                # Get values for this dimension
+                dim_values = []
+                for i, feature_gid in enumerate(gids):
+                    if i < len(positions) and len(positions[i]) > 0:
+                        # Find the index of this dimension in the positions array
+                        dim_idx = list(dim_info.keys()).index(dim_name)
+                        if dim_idx < positions[i].shape[0]:
+                            dim_values.append((feature_gid, positions[i][dim_idx]))
+                
+                if not dim_values:
+                    continue
+                    
+                # Sort by dimension value
+                dim_values.sort(key=lambda x: x[1])
+                
+                # Create bins along this dimension
+                n_bins = min(10, len(dim_values))
+                dim_bin_edges = np.linspace(dim_data['range'][0], dim_data['range'][1], n_bins + 1)
+                
+                # Bin features by dimension value
+                binned_features = [[] for _ in range(n_bins)]
+                for feature_gid, value in dim_values:
+                    bin_idx = min(n_bins - 1, max(0, int((value - dim_data['range'][0]) / 
+                                                       (dim_data['range'][1] - dim_data['range'][0]) * n_bins)))
+                    binned_features[bin_idx].append(feature_gid)
+                
+                # Store precomputed information
+                precomputed_dims[dim_name] = {
+                    'dim_values': dim_values,
+                    'bin_edges': dim_bin_edges,
+                    'binned_features': binned_features,
+                    'bin_centers': [(dim_bin_edges[i] + dim_bin_edges[i+1])/2 for i in range(n_bins)],
+                    'n_bins': n_bins
+                }
+        
+        # Connect the spike responses to features using precomputed dimensional data
+        if precomputed_dims:
+            print("Computing cell-specific responses using precomputed dimensional data...")
             
             # For each cell, compute responses across feature dimensions
-            for gid in cell_metrics:
+            for gid in tqdm(cell_metrics, desc="Computing spatiotemporal responses"):
                 spike_times = cell_metrics[gid]['spike_times']
                 
                 # Skip cells without spikes
                 if len(spike_times) == 0:
                     continue
                 
-                # Analyze response along each dimension
-                for dim_name, dim_data in dim_info.items():
-                    # Get values for this dimension
-                    dim_values = []
-                    for i, feature_gid in enumerate(gids):
-                        if i < len(positions) and len(positions[i]) > 0:
-                            # Find the index of this dimension in the positions array
-                            dim_idx = list(dim_info.keys()).index(dim_name)
-                            if dim_idx < positions[i].shape[0]:
-                                dim_values.append((feature_gid, positions[i][dim_idx]))
-                    
-                    if not dim_values:
-                        continue
-                        
-                    # Sort by dimension value
-                    dim_values.sort(key=lambda x: x[1])
-                    
-                    # Create bins along this dimension
-                    n_bins = min(10, len(dim_values))
-                    bin_edges = np.linspace(dim_data['range'][0], dim_data['range'][1], n_bins + 1)
-                    
-                    # Bin features by dimension value
-                    binned_features = [[] for _ in range(n_bins)]
-                    for feature_gid, value in dim_values:
-                        bin_idx = min(n_bins - 1, max(0, int((value - dim_data['range'][0]) / 
-                                                           (dim_data['range'][1] - dim_data['range'][0]) * n_bins)))
-                        binned_features[bin_idx].append(feature_gid)
+                # Analyze response along each dimension using precomputed data
+                for dim_name, precomputed in precomputed_dims.items():
+                    bin_centers = precomputed['bin_centers']
+                    binned_features = precomputed['binned_features']
+                    n_bins = precomputed['n_bins']
                     
                     # Compute response for each bin
                     bin_responses = []
@@ -296,25 +365,25 @@ def process_model_spatiotemporal_responses(
                             continue
                             
                         # For this bin, compute average response to features in this bin
-                        bin_center = (bin_edges[bin_idx] + bin_edges[bin_idx + 1]) / 2
-                        
                         # TODO: Customize this based on feature type
                         # For now, we'll just use the firing rate as the response
                         bin_responses.append(cell_metrics[gid]['firing_rate'])
                     
                     # Store tuning curve for this dimension
                     cell_metrics[gid]['spatiotemporal_responses'][dim_name] = {
-                        'bin_centers': [(bin_edges[i] + bin_edges[i+1])/2 for i in range(n_bins)],
+                        'bin_centers': bin_centers,
                         'responses': bin_responses
                     }
         
         # Compute spatial receptive fields if input signal has spatial structure
         if n_channels > 1:
+            print("Computing spatial and temporal receptive fields...")
+            
             # Divide simulation duration into time windows
             window_size = 500  # ms
             n_windows = int(simulation_duration / window_size)
             
-            for gid in cell_metrics:
+            for gid in tqdm(cell_metrics, desc="Computing receptive fields"):
                 spike_times = cell_metrics[gid]['spike_times']
                 
                 # Skip cells without spikes
@@ -350,12 +419,13 @@ def process_model_spatiotemporal_responses(
             'population_metrics': {
                 'all_spikes': all_spikes,
                 'population_rate': pop_rate,
-                'bin_edges': bin_edges,
+                'bin_edges': pop_bin_edges,
                 'mean_rate': np.mean(pop_rate) if len(pop_rate) > 0 else 0,
                 'n_active_cells': sum(1 for gid, metrics in cell_metrics.items() if metrics['n_spikes'] > 0),
                 'total_cells': n_cells,
             },
-            'cell_metrics': cell_metrics
+            'cell_metrics': cell_metrics,
+            'precomputed_dims': precomputed_dims  # Store for potential debugging/analysis
         }
     
     # Return processed data for a single population or all populations
@@ -363,7 +433,6 @@ def process_model_spatiotemporal_responses(
         return next(iter(processed_responses.values()))
     else:
         return processed_responses
-
 
 def plot_spatiotemporal_tuning(processed_data, dim_x, dim_y, metric='firing_rate'):
     """
@@ -406,7 +475,7 @@ def plot_spatiotemporal_tuning(processed_data, dim_x, dim_y, metric='firing_rate
         return fig
     
     # Get example cells - choose cells with good tuning if possible
-    n_example_cells = min(9, len(active_cells))
+    n_example_cells = min(8, len(active_cells))
     
     # Sort cells by firing rate to get the most active cells
     sorted_cells = sorted(active_cells.items(), key=lambda x: x[1]['firing_rate'], reverse=True)
@@ -798,7 +867,7 @@ def plot_feature_sensitivity_analysis(processed_data):
             dim_sensitivities[dim_name].append(dim_metrics[metric_to_plot])
     
     ax1.boxplot([dim_sensitivities[dim] for dim in sorted_dimensions], 
-               labels=sorted_dimensions)
+                tick_labels=sorted_dimensions)
     ax1.set_xlabel('Dimension')
     ax1.set_ylabel(f'{metric_to_plot.replace("_", " ").title()}')
     ax1.set_title(f'Distribution of {metric_to_plot.replace("_", " ").title()} by Dimension')
@@ -826,12 +895,16 @@ def plot_feature_sensitivity_analysis(processed_data):
         
         # Add regression line
         if len(x_vals) > 2:
-            slope, intercept, r_value, p_value, std_err = linregress(x_vals, y_vals)
-            x_range = np.linspace(min(x_vals), max(x_vals), 100)
-            y_fit = slope * x_range + intercept
-            ax2.plot(x_range, y_fit, 'r--', 
-                    label=f'R²={r_value**2:.2f}, p={p_value:.4f}')
-            ax2.legend()
+            try:
+                slope, intercept, r_value, p_value, std_err = linregress(x_vals, y_vals)
+                x_range = np.linspace(min(x_vals), max(x_vals), 100)
+                y_fit = slope * x_range + intercept
+                ax2.plot(x_range, y_fit, 'r--', 
+                         label=f'R^2={r_value**2:.2f}, p={p_value:.4f}')
+                ax2.legend()
+            except ValueError as e:
+                warnings.warn(f"Feature sensitivity regression error: {e} ")
+                
     
     # cell ranking by sensitivity
     ax3 = fig.add_subplot(2, 2, 3)
@@ -1052,12 +1125,34 @@ def plot_dynamic_spatiotemporal_responses(processed_data):
     ax1 = fig.add_subplot(3, 1, 1)
     
     pop_rate = population_metrics['population_rate']
-    bin_edges = population_metrics['bin_edges']
+    pop_bin_edges = population_metrics['bin_edges']
     
-    bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+    # Ensure bin_centers matches pop_rate dimensions
+    # Recalculate bin_centers from the stored bin_edges to ensure consistency
+    if len(pop_bin_edges) == len(pop_rate) + 1:
+        # Standard histogram format: bin_edges has n+1 elements for n bins
+        bin_centers = (pop_bin_edges[:-1] + pop_bin_edges[1:]) / 2
+    elif len(pop_bin_edges) == len(pop_rate):
+        # Edge case: if bin_edges somehow has same length as pop_rate
+        bin_centers = pop_bin_edges
+    else:
+        # Fallback: create time axis based on pop_rate length and known bin size
+        warnings.warn(f"Dimension mismatch between bin_edges ({len(pop_bin_edges)}) and pop_rate ({len(pop_rate)})")
+        
+        # Use 10ms bins
+        bin_size = 10  # ms
+        bin_centers = np.arange(len(pop_rate)) * bin_size + bin_size/2
+    
+    # Verify dimensions before plotting
+    if len(bin_centers) != len(pop_rate):
+        warnings.warn(f"Still have dimension mismatch - bin_centers: {len(bin_centers)}, pop_rate: {len(pop_rate)}")
+        # Create a simple index-based x-axis as last resort
+        bin_centers = np.arange(len(pop_rate))
+        ax1.set_xlabel('Bin Index')
+    else:
+        ax1.set_xlabel('Time (ms)')
     
     ax1.plot(bin_centers, pop_rate)
-    ax1.set_xlabel('Time (ms)')
     ax1.set_ylabel('Firing Rate (Hz/cell)')
     ax1.set_title('Population Firing Rate')
     
@@ -1074,7 +1169,7 @@ def plot_dynamic_spatiotemporal_responses(processed_data):
                 ax2.plot(signal_data[:, ch], label=f'Channel {ch}', alpha=0.7)
             ax2.legend()
         else:
-            ax2.plot(signal)
+            ax2.plot(signal_data)  # Fixed: was 'signal' instead of 'signal_data'
         
         ax2.set_xlabel('Sample')
         ax2.set_ylabel('Amplitude')
@@ -1084,16 +1179,34 @@ def plot_dynamic_spatiotemporal_responses(processed_data):
     ax3 = fig.add_subplot(3, 1, 3)
     
     if len(pop_rate) > 50:  # Need enough data for spectrogram
-        fs = 1000 / (bin_edges[1] - bin_edges[0])  # Hz
+        # Calculate sampling frequency from bin spacing
+        if len(bin_centers) > 1:
+            dt_ms = bin_centers[1] - bin_centers[0]  # time step in ms
+            fs = 1000 / dt_ms  # Convert to Hz
+        else:
+            fs = 100  # Default fallback sampling rate
         
-        f, t, Sxx = signal.spectrogram(pop_rate, fs=fs, nperseg=min(256, len(pop_rate)//4))
-        
-        im = ax3.pcolormesh(t, f, 10 * np.log10(Sxx), shading='gouraud', cmap='viridis')
-        plt.colorbar(im, ax=ax3, label='Power/Frequency (dB/Hz)')
-        
-        ax3.set_ylabel('Frequency (Hz)')
-        ax3.set_xlabel('Time (s)')
-        ax3.set_title('Population Response Spectrogram')
+        try:
+            f, t, Sxx = signal.spectrogram(pop_rate, fs=fs, nperseg=min(256, len(pop_rate)//4))
+            
+            # Convert time axis back to ms if needed
+            if ax1.get_xlabel() == 'Time (ms)':
+                t = t * 1000  # Convert seconds to ms
+            
+            im = ax3.pcolormesh(t, f, 10 * np.log10(Sxx + 1e-10), shading='gouraud', cmap='viridis')
+            plt.colorbar(im, ax=ax3, label='Power/Frequency (dB/Hz)')
+            
+            ax3.set_ylabel('Frequency (Hz)')
+            if ax1.get_xlabel() == 'Time (ms)':
+                ax3.set_xlabel('Time (ms)')
+            else:
+                ax3.set_xlabel('Time (s)')
+            ax3.set_title('Population Response Spectrogram')
+            
+        except Exception as e:
+            warnings.warn(f"Could not generate spectrogram: {e}")
+            ax3.text(0.5, 0.5, f"Spectrogram generation failed:\n{str(e)}", 
+                    ha='center', va='center', fontsize=12)
     else:
         ax3.text(0.5, 0.5, "Insufficient data for spectrogram", 
                 ha='center', va='center', fontsize=14)
@@ -1116,7 +1229,9 @@ def analyze_spatiotemporal_responses(model_output_path,
                                                'sensitivity_analysis',
                                                'receptive_fields',
                                                'response_examples',
-                                               'dynamic_responses']):
+                                               'dynamic_responses'],
+                                     max_gids=None,
+                                     sample_seed=None):
     """
     Analysis of model responses to spatio-temporal feature stimuli.
     
@@ -1157,7 +1272,9 @@ def analyze_spatiotemporal_responses(model_output_path,
         populations = populations,
         time_range=time_range,
         time_variable=time_variable,
-        include_artificial=include_artificial
+        include_artificial=include_artificial,
+        max_gids=max_gids,
+        sample_seed=sample_seed
     )
     
     figures = {}
@@ -1180,7 +1297,7 @@ def analyze_spatiotemporal_responses(model_output_path,
             print(f"Generating spatiotemporal tuning plot for {dim_x} vs {dim_y}...")
             figures['spatiotemporal_tuning'] = plot_spatiotemporal_tuning(
                 processed_data, dim_x, dim_y)
-    
+            
     if 'sensitivity_analysis' in analyses:
         print("Generating feature sensitivity analysis plot...")
         figures['sensitivity_analysis'] = plot_feature_sensitivity_analysis(processed_data)
@@ -1219,5 +1336,7 @@ if __name__ == "__main__":
         include_artificial = False,
         output_dir="figures/spatiotemporal_analysis",
         fig_format="png",
-        analyses=['tuning_curves', 'sensitivity_analysis', 'response_examples', 'dynamic_responses']
+        analyses=['tuning_curves', 'sensitivity_analysis', 'response_examples', 'dynamic_responses'],
+        max_gids=50000,
+        sample_seed=67
     )

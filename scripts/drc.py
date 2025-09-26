@@ -399,6 +399,7 @@ class DynamicalResponsePopulation(InputFeaturePopulation):
         density_function: Optional[Callable] = None,
         encoding_distribution: Optional[Dict[str, Any]] = None,
         random_seed: Optional[int] = None,
+        comm: Optional[Any] = None
     ):
         """
         Initialize a DynamicalResponsePopulation.
@@ -427,6 +428,8 @@ class DynamicalResponsePopulation(InputFeaturePopulation):
             Parameters for feature encoding
         random_seed : int, optional
             Random seed for reproducibility
+        comm : mpi4py.Comm, optional
+            Optional MPI communicator (used for export metadata operation)
         """
         super().__init__(
             name=name,
@@ -444,7 +447,7 @@ class DynamicalResponsePopulation(InputFeaturePopulation):
         self.response_metrics = defaultdict(dict)
         
         self.dimension_stats = {dim["name"]: {} for dim in dimensions}
-
+        self.comm = comm
 
     def generate_features(
         self,
@@ -1662,10 +1665,50 @@ class DynamicalResponsePopulation(InputFeaturePopulation):
                 feature_group.attrs['dimensions_info'] = dimensions_info
 
             logger.info(f"Feature data written to {output_path}/Signals/{signal_id}/feature_data")
-    
+
+    def _merge_feature_data_dicts(self, local_dict, all_dicts):
+        """
+        Merge feature data dictionaries from all ranks by concatenating lists.
+
+        Parameters:
+        -----------
+        local_dict : Dict
+            Local feature data dictionary
+        all_dicts : List[Dict]
+            List of feature data dictionaries from all ranks
+
+        Returns:
+        --------
+        Dict
+            Merged feature data dictionary
+        """
+        merged_dict = {}
+
+        # Get all possible keys from all dictionaries
+        all_keys = set()
+        for d in all_dicts:
+            if d is not None:
+                all_keys.update(d.keys())
+
+        # Merge each key by concatenating lists
+        for key in all_keys:
+            merged_values = []
+            for d in all_dicts:
+                if d is not None and key in d:
+                    # Extend the list with values from this rank
+                    if isinstance(d[key], list):
+                        merged_values.extend(d[key])
+                    else:
+                        # Handle case where value is not a list
+                        merged_values.append(d[key])
+            merged_dict[key] = merged_values
+
+        return merged_dict
+
+
     def export_metadata(self, signal_id, stimulus, output_path=None):
         """
-        Export feature population data.
+        Export feature population data, collecting from all MPI ranks.
 
         Parameters:
         -----------
@@ -1678,19 +1721,22 @@ class DynamicalResponsePopulation(InputFeaturePopulation):
 
         Returns:
         --------
-        Dict
-            Exported data dictionary
+        None
         """
-        export_data = {
+        comm = self.comm
+        rank = comm.rank
+
+        # Collect local export data
+        local_export_data = {
             'name': self.name,
-            'n_features': self.n_features,
+            'n_features': len(self.features),  # Local number of features
             'dimensions': self.dimensions,
             'dimension_stats': self.dimension_stats,
             'population_metrics': getattr(self, 'population_metrics', {}),
         }
 
-        # Create flat dictionaries for features
-        feature_data = {
+        # Create flat dictionaries for local features
+        local_feature_data = {
             'gids': [],
             'positions': []
         }
@@ -1698,7 +1744,7 @@ class DynamicalResponsePopulation(InputFeaturePopulation):
         metadata_keys = set()
         metric_keys = set()
 
-        # Collect all metadata and metric keys
+        # Collect all metadata and metric keys from local features
         for gid, feature in self.features.items():
             metadata_dict = feature.kwargs.get('metadata', {})
             for key in metadata_dict:
@@ -1708,42 +1754,100 @@ class DynamicalResponsePopulation(InputFeaturePopulation):
                 for key in self.response_metrics[gid]:
                     metric_keys.add(key)
 
+        # Initialize lists for all possible keys
         for key in metadata_keys:
-            feature_data[f'metadata_{key}'] = []
+            local_feature_data[f'metadata_{key}'] = []
 
         for key in metric_keys:
-            feature_data[f'metric_{key}'] = []
+            local_feature_data[f'metric_{key}'] = []
 
-        # Collect data in column format
+        # Collect local data in column format
         for gid, feature in self.features.items():
-            feature_data['gids'].append(gid)
-            feature_data['positions'].append(feature.position)
+            local_feature_data['gids'].append(gid)
+            local_feature_data['positions'].append(feature.position)
 
             metadata_dict = feature.kwargs.get('metadata', {})
             for key in metadata_keys:
                 if key in metadata_dict:
-                    feature_data[f'metadata_{key}'].append(metadata_dict[key])
+                    local_feature_data[f'metadata_{key}'].append(metadata_dict[key])
                 else:
-                    feature_data[f'metadata_{key}'].append(None)  # Use None for missing values
+                    local_feature_data[f'metadata_{key}'].append(None)
 
             if hasattr(self, 'response_metrics') and gid in self.response_metrics:
                 metrics_dict = self.response_metrics[gid]
                 for key in metric_keys:
                     if key in metrics_dict:
-                        feature_data[f'metric_{key}'].append(metrics_dict[key])
+                        local_feature_data[f'metric_{key}'].append(metrics_dict[key])
                     else:
-                        feature_data[f'metric_{key}'].append(None)
+                        local_feature_data[f'metric_{key}'].append(None)
             else:
                 for key in metric_keys:
-                    feature_data[f'metric_{key}'].append(None)
+                    local_feature_data[f'metric_{key}'].append(None)
 
-        # Save to h5 file if requested
-        if output_path:
-            write_signal(output_path, self.name, self.dimensions,
-                         signal_id, stimulus)
-            self._export_feature_data(output_path, signal_id, feature_data)
+        # Gather all feature data dictionaries to rank 0
+        all_feature_data_dicts = comm.gather(local_feature_data, root=0)
 
-        return export_data
+        # Gather dimension stats from all ranks and merge
+        all_dimension_stats = comm.gather(self.dimension_stats, root=0)
+
+        # Gather population metrics from all ranks and merge
+        local_pop_metrics = getattr(self, 'population_metrics', {})
+        all_pop_metrics = comm.gather(local_pop_metrics, root=0)
+
+        # Merge data on rank 0
+        global_feature_data = None
+        global_export_data = None
+
+        if rank == 0:
+            # Merge feature data from all ranks
+            global_feature_data = self._merge_feature_data_dicts(
+                local_feature_data, all_feature_data_dicts
+            )
+
+            # Merge dimension stats - combine statistics across ranks
+            global_dimension_stats = {}
+            for dim_name in self.dimensions:
+                dim_name_key = dim_name["name"]
+                global_dimension_stats[dim_name_key] = {"values": []}
+
+                all_values = []
+                for rank_stats in all_dimension_stats:
+                    if rank_stats and dim_name_key in rank_stats:
+                        if "values" in rank_stats[dim_name_key]:
+                            all_values.extend(rank_stats[dim_name_key]["values"])
+
+                if all_values:
+                    values_array = np.array(all_values)
+                    global_dimension_stats[dim_name_key] = {
+                        "values": all_values,
+                        "min": values_array.min(),
+                        "max": values_array.max(),
+                        "mean": values_array.mean(),
+                        "std": values_array.std()
+                    }
+
+            # Merge population metrics - for now just use the last non-empty one
+            # Could implement more sophisticated merging if needed
+            global_pop_metrics = {}
+            for rank_metrics in all_pop_metrics:
+                if rank_metrics:
+                    global_pop_metrics.update(rank_metrics)
+
+            # Calculate total number of features across all ranks
+            total_n_features = len(global_feature_data.get('gids', []))
+
+            # Save to h5 file if requested
+            if output_path and global_feature_data:
+                write_signal(output_path, self.name, self.dimensions,
+                             signal_id, stimulus)
+                self._export_feature_data(output_path, signal_id, global_feature_data)
+
+            logger.info(f"Exported metadata for {total_n_features} features across {comm.size} ranks")
+
+        comm.barrier()
+
+    
+            
 
     
 def create_dynamical_response_system(
@@ -1846,6 +1950,7 @@ def create_dynamical_response_system(
             "rate_scaling_factor": 0.5,  # Higher frequencies = higher rates
         },
         random_seed=random_seed,
+        comm=comm
     )
 
     # Determine population id
@@ -2060,12 +2165,9 @@ def run_dynamical_response_characterization(signal_id = None,
             **io_kwargs,
         )
 
-    export_data = None
-    if rank == 0:
-        export_data = population.export_metadata(signal_id,
-                                                 stimulus,
-                                                 output_path=output_path if not dry_run else None)
-    comm.barrier()
+    export_data = population.export_metadata(signal_id,
+                                             stimulus,
+                                             output_path=output_path if not dry_run else None)
     
 
     analysis_results = None

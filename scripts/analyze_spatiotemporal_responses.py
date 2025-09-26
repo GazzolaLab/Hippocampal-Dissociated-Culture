@@ -8,46 +8,19 @@ import random
 from mpi4py import MPI
 import numpy as np
 from scipy import signal
-from scipy.stats import linregress, variation
-from sklearn.metrics import mutual_info_score
+from scipy.stats import pearsonr, spearmanr
 from sklearn.feature_selection import mutual_info_regression
-import h5py
-import matplotlib as mpl
-import matplotlib.cm as cm
-import matplotlib.pyplot as plt
-from matplotlib.gridspec import GridSpec
-from matplotlib.colors import Normalize
-from mpl_toolkits.axes_grid1 import make_axes_locatable
-from mpl_toolkits.mplot3d import Axes3D
-from scipy.interpolate import griddata
-from neuroh5.io import (
-    read_cell_attributes,
-    read_population_names,
-    read_population_ranges,
-    NeuroH5ProjectionGen,
-    bcast_cell_attributes,
-)
-from miv_simulator import spikedata
+from collections import defaultdict
+import warnings
 from tqdm import tqdm
+from neuroh5.io import read_cell_attributes, read_population_names, read_population_ranges
+from miv_simulator import spikedata
+import h5py
+from drc import SpatioTemporalModality
 
 K = TypeVar('K')  # Key type
 V = TypeVar('V')  # Value type
 T = TypeVar('T')  # Generic type
-
-plt.style.use('ggplot')
-SMALL_SIZE = 14
-MEDIUM_SIZE = 16
-BIGGER_SIZE = 18
-
-plt.rc('font', size=SMALL_SIZE)
-plt.rc('axes', titlesize=MEDIUM_SIZE)
-plt.rc('axes', labelsize=MEDIUM_SIZE)
-plt.rc('xtick', labelsize=SMALL_SIZE)
-plt.rc('ytick', labelsize=SMALL_SIZE)
-plt.rc('legend', fontsize=SMALL_SIZE)
-plt.rc('figure', titlesize=MEDIUM_SIZE)
-
-mpl.rcParams['font.family'] = 'sans-serif'
 
 
 def reservoir_sample_dict(
@@ -99,72 +72,795 @@ def reservoir_sample_dict(
     return dict(final_reservoir)
 
 
+def compute_feature_activity_timeseries(
+    input_signal, 
+    feature_data, 
+    dimensions_info, 
+    sample_rate=1000, 
+    time_bin_ms=50.0
+):
+    """
+    Compute activity time series for each input feature based on its spatio-temporal filter.
+    
+    Parameters:
+    -----------
+    input_signal : np.ndarray
+        Input signal (time, channels)
+    feature_data : dict
+        Feature metadata from HDF5 file
+    dimensions_info : dict
+        Information about feature dimensions
+    sample_rate : float
+        Sampling rate in Hz
+    time_bin_ms : float
+        Time bin size in milliseconds for discretization
+        
+    Returns:
+    --------
+    dict
+        {feature_gid: activity_timeseries} for each feature
+    """
+    if len(input_signal.shape) == 1:
+        input_signal = input_signal.reshape(-1, 1)
+    
+    n_timepoints, n_channels = input_signal.shape
+    duration_ms = (n_timepoints / sample_rate) * 1000
+    n_time_bins = int(duration_ms / time_bin_ms)
+    
+    # Extract feature information
+    gids = feature_data.get('gids', [])
+    positions = feature_data.get('positions', [])
+    
+    feature_activities = {}
+    
+    # Get dimension indices
+    dim_names = list(dimensions_info.keys())
+    temp_pos_idx = dim_names.index('temporal_position') if 'temporal_position' in dim_names else 0
+    temp_freq_idx = dim_names.index('temporal_frequency') if 'temporal_frequency' in dim_names else 1
+    spatial_pos_idx = dim_names.index('spatial_position') if 'spatial_position' in dim_names else 2
+    spatial_width_idx = dim_names.index('spatial_width') if 'spatial_width' in dim_names else 3
+
+    spatio_temporal_modality = SpatioTemporalModality(input_shape=input_signal.shape,
+                                                      sample_rate=sample_rate)
+
+    for i, gid in enumerate(tqdm(gids, desc="Computing feature activities")):
+        if i >= len(positions) or len(positions[i]) < 4:
+            continue
+            
+        # Extract feature parameters
+        pos = positions[i]
+        temporal_position = pos[temp_pos_idx]  # 0-1, relative position in time
+        temporal_frequency = pos[temp_freq_idx]  # Hz
+        spatial_position = pos[spatial_pos_idx]  # 0-1, relative position in space
+        spatial_width = pos[spatial_width_idx]  # 0-1, spatial tuning width
+        
+        # Create spatio-temporal filter
+        input_filter = spatio_temporal_modality.create_input_filter(pos)
+        
+        activity = input_filter(input_signal)
+        
+        # Bin activity into time bins
+        binned_activity = bin_timeseries(activity, time_bin_ms, sample_rate)
+        
+        feature_activities[int(gid)] = binned_activity
+    
+    return feature_activities
+
+
+
+def bin_timeseries(timeseries, bin_size_ms, sample_rate):
+    """
+    Bin a continuous time series into discrete time bins.
+    """
+    samples_per_bin = int((bin_size_ms / 1000.0) * sample_rate)
+    n_bins = len(timeseries) // samples_per_bin
+    
+    if n_bins == 0:
+        return np.array([np.mean(timeseries)])
+    
+    # Reshape and average within bins
+    truncated_length = n_bins * samples_per_bin
+    reshaped = timeseries[:truncated_length].reshape(n_bins, samples_per_bin)
+    binned = np.mean(reshaped, axis=1)
+    
+    return binned
+
+
+def compute_spike_rate_timeseries(spike_times, duration_ms, time_bin_ms=50.0):
+    """
+    Convert spike times to binned firing rate time series.
+    """
+    n_bins = int(duration_ms / time_bin_ms)
+    bin_edges = np.linspace(0, duration_ms, n_bins + 1)
+    
+    spike_counts, _ = np.histogram(spike_times, bins=bin_edges)
+    
+    # Convert to firing rate (Hz)
+    firing_rates = spike_counts / (time_bin_ms / 1000.0)
+    
+    return firing_rates
+
+
+def compute_signal_dimension_correlations(
+    input_signal,
+    neuron_spike_dict,
+    duration_ms,
+    sample_rate=1000,
+    time_bin_ms=50.0,
+    correlation_method='pearson',
+    include_derivatives=True,
+    include_frequency_bands=True,
+    frequency_bands=[(1, 4), (4, 8), (8, 15), (15, 30), (30, 100)]
+):
+    """
+    Compute correlations between neurons and input signal dimensions directly.
+    This is much faster than correlating with individual features.
+    
+    Parameters:
+    -----------
+    input_signal : np.ndarray
+        Input signal (time, channels)
+    neuron_spike_dict : dict
+        {neuron_gid: spike_times_array}
+    duration_ms : float
+        Total simulation duration in milliseconds
+    sample_rate : float
+        Sampling rate in Hz
+    time_bin_ms : float
+        Time bin size for correlation analysis
+    correlation_method : str
+        'pearson', 'spearman', or 'mutual_info'
+    include_derivatives : bool
+        Whether to include temporal derivatives
+    include_frequency_bands : bool
+        Whether to include frequency band decompositions
+    frequency_bands : List[Tuple[float, float]]
+        Frequency bands to extract (low_hz, high_hz)
+        
+    Returns:
+    --------
+    dict
+        {neuron_gid: {signal_dimension: correlation_value}}
+    """
+    if len(input_signal.shape) == 1:
+        input_signal = input_signal.reshape(-1, 1)
+    
+    n_timepoints, n_channels = input_signal.shape
+    
+    # Create all signal dimensions to correlate with
+    signal_dimensions = {}
+    
+    # 1. Raw signal channels
+    for ch in range(n_channels):
+        binned_signal = bin_timeseries(input_signal[:, ch], time_bin_ms, sample_rate)
+        signal_dimensions[f'channel_{ch}'] = binned_signal
+    
+    # 2. Temporal derivatives
+    if include_derivatives:
+        for ch in range(n_channels):
+            signal_ch = input_signal[:, ch]
+            
+            # First derivative (velocity)
+            derivative = np.gradient(signal_ch)
+            binned_deriv = bin_timeseries(derivative, time_bin_ms, sample_rate)
+            signal_dimensions[f'channel_{ch}_derivative'] = binned_deriv
+            
+            # Second derivative (acceleration) 
+            second_deriv = np.gradient(derivative)
+            binned_second_deriv = bin_timeseries(second_deriv, time_bin_ms, sample_rate)
+            signal_dimensions[f'channel_{ch}_second_derivative'] = binned_second_deriv
+    
+    # 3. Spatial derivatives (if multichannel)
+    if n_channels > 1:
+        for t in range(0, n_timepoints, max(1, int(sample_rate * time_bin_ms / 1000))):
+            spatial_profile = input_signal[t, :]
+            spatial_grad = np.gradient(spatial_profile)
+            # Store as single value per time bin
+        
+        # Compute spatial gradient over time
+        spatial_gradients = []
+        step_size = max(1, int(sample_rate * time_bin_ms / 1000))
+        for t in range(0, n_timepoints, step_size):
+            if t < n_timepoints:
+                spatial_profile = input_signal[t, :]
+                spatial_grad = np.gradient(spatial_profile)
+                spatial_gradients.append(np.mean(spatial_grad))  # Mean spatial gradient
+        
+        signal_dimensions['spatial_gradient'] = np.array(spatial_gradients)
+    
+    # 4. Frequency band decompositions
+    if include_frequency_bands and frequency_bands:
+        from scipy import signal as sp_signal
+        
+        for ch in range(n_channels):
+            signal_ch = input_signal[:, ch]
+            
+            for i, (low_freq, high_freq) in enumerate(frequency_bands):
+                try:
+                    # Create bandpass filter
+                    nyquist = sample_rate / 2
+                    low_norm = max(0.01, low_freq / nyquist)
+                    high_norm = min(0.99, high_freq / nyquist)
+                    
+                    if low_norm < high_norm:
+                        b, a = sp_signal.butter(2, [low_norm, high_norm], btype='band')
+                        filtered = sp_signal.filtfilt(b, a, signal_ch)
+                        
+                        # Extract envelope (magnitude)
+                        envelope = np.abs(sp_signal.hilbert(filtered))
+                        binned_envelope = bin_timeseries(envelope, time_bin_ms, sample_rate)
+                        
+                        signal_dimensions[f'channel_{ch}_band_{low_freq}_{high_freq}Hz'] = binned_envelope
+                        
+                except Exception as e:
+                    warnings.warn(f"Failed to compute frequency band {low_freq}-{high_freq}Hz: {e}")
+    
+    # 5. Global signal properties
+    # RMS energy across all channels
+    rms_energy = np.sqrt(np.mean(input_signal**2, axis=1))
+    binned_rms = bin_timeseries(rms_energy, time_bin_ms, sample_rate)
+    signal_dimensions['global_rms'] = binned_rms
+    
+    # Peak amplitude across channels
+    peak_amplitude = np.max(np.abs(input_signal), axis=1)
+    binned_peak = bin_timeseries(peak_amplitude, time_bin_ms, sample_rate)
+    signal_dimensions['global_peak'] = binned_peak
+    
+    # Compute correlations with neurons
+    correlations = {}
+    
+    # Convert spike trains to rate time series
+    neuron_rates = {}
+    for neuron_gid, spike_times in tqdm(neuron_spike_dict.items(), desc="Converting spikes to rates"):
+        if len(spike_times) > 0:
+            neuron_rates[neuron_gid] = compute_spike_rate_timeseries(
+                spike_times, duration_ms, time_bin_ms
+            )
+        else:
+            n_bins = int(duration_ms / time_bin_ms)
+            neuron_rates[neuron_gid] = np.zeros(n_bins)
+    
+    # Compute correlations
+    for neuron_gid, neuron_rate in tqdm(neuron_rates.items(), desc="Computing signal correlations"):
+        correlations[neuron_gid] = {}
+        
+        for signal_name, signal_data in signal_dimensions.items():
+            # Ensure same length
+            min_length = min(len(neuron_rate), len(signal_data))
+            neuron_data = neuron_rate[:min_length]
+            signal_data_trimmed = signal_data[:min_length]
+            
+            # Skip if no activity
+            if np.sum(neuron_data) == 0 or np.sum(np.abs(signal_data_trimmed)) == 0:
+                correlations[neuron_gid][signal_name] = 0.0
+                continue
+            
+            try:
+                if correlation_method == 'pearson':
+                    corr, p_val = pearsonr(neuron_data, signal_data_trimmed)
+                    correlations[neuron_gid][signal_name] = corr if not np.isnan(corr) else 0.0
+                elif correlation_method == 'spearman':
+                    corr, p_val = spearmanr(neuron_data, signal_data_trimmed)
+                    correlations[neuron_gid][signal_name] = corr if not np.isnan(corr) else 0.0
+                elif correlation_method == 'mutual_info':
+                    mi = mutual_info_regression(
+                        neuron_data.reshape(-1, 1), 
+                        signal_data_trimmed, 
+                        discrete_features=False,
+                        random_state=42
+                    )[0]
+                    correlations[neuron_gid][signal_name] = mi
+                else:
+                    raise ValueError(f"Unknown correlation method: {correlation_method}")
+                    
+            except Exception as e:
+                warnings.warn(f"Correlation computation failed for neuron {neuron_gid}, signal {signal_name}: {e}")
+                correlations[neuron_gid][signal_name] = 0.0
+    
+    return correlations
+
+
+def compute_feature_neuron_correlations(
+    feature_activities, 
+    neuron_spike_dict, 
+    duration_ms, 
+    time_bin_ms=50.0,
+    correlation_method='pearson'
+):
+    """
+    Compute correlations between feature activities and neuron responses.
+    
+    Parameters:
+    -----------
+    feature_activities : dict
+        {feature_gid: activity_timeseries} from compute_feature_activity_timeseries
+    neuron_spike_dict : dict
+        {neuron_gid: spike_times_array}
+    duration_ms : float
+        Total simulation duration in milliseconds
+    time_bin_ms : float
+        Time bin size for correlation analysis
+    correlation_method : str
+        'pearson', 'spearman', or 'mutual_info'
+        
+    Returns:
+    --------
+    dict
+        {neuron_gid: {feature_gid: correlation_value}}
+    """
+    correlations = {}
+    
+    # Convert spike trains to rate time series
+    neuron_rates = {}
+    for neuron_gid, spike_times in tqdm(neuron_spike_dict.items(), desc="Converting spikes to rates"):
+        if len(spike_times) > 0:
+            neuron_rates[neuron_gid] = compute_spike_rate_timeseries(
+                spike_times, duration_ms, time_bin_ms
+            )
+        else:
+            # Handle silent neurons
+            n_bins = int(duration_ms / time_bin_ms)
+            neuron_rates[neuron_gid] = np.zeros(n_bins)
+    
+    # Compute correlations
+    for neuron_gid, neuron_rate in tqdm(neuron_rates.items(), desc="Computing correlations"):
+        correlations[neuron_gid] = {}
+        
+        for feature_gid, feature_activity in feature_activities.items():
+            # Ensure same length
+            min_length = min(len(neuron_rate), len(feature_activity))
+            neuron_data = neuron_rate[:min_length]
+            feature_data = feature_activity[:min_length]
+            
+            # Skip if no activity
+            if np.sum(neuron_data) == 0 or np.sum(feature_data) == 0:
+                correlations[neuron_gid][feature_gid] = 0.0
+                continue
+            
+            try:
+                if correlation_method == 'pearson':
+                    corr, p_val = pearsonr(neuron_data, feature_data)
+                    correlations[neuron_gid][feature_gid] = corr if not np.isnan(corr) else 0.0
+                elif correlation_method == 'spearman':
+                    corr, p_val = spearmanr(neuron_data, feature_data)
+                    correlations[neuron_gid][feature_gid] = corr if not np.isnan(corr) else 0.0
+                elif correlation_method == 'mutual_info':
+                    # Use continuous MI estimator to avoid information loss
+                    mi = mutual_info_regression(
+                        neuron_data.reshape(-1, 1), 
+                        feature_data, 
+                        discrete_features=False,
+                        random_state=42
+                    )[0]
+                    correlations[neuron_gid][feature_gid] = mi
+                else:
+                    raise ValueError(f"Unknown correlation method: {correlation_method}")
+                    
+            except Exception as e:
+                warnings.warn(f"Correlation computation failed for neuron {neuron_gid}, feature {feature_gid}: {e}")
+                correlations[neuron_gid][feature_gid] = 0.0
+    
+    return correlations
+
+
+def build_dimensional_receptive_fields(
+    correlations, 
+    feature_data, 
+    dimensions_info, 
+    min_features_per_bin=3
+):
+    """
+    Build receptive fields along each dimension from correlation data.
+    
+    Parameters:
+    -----------
+    correlations : dict
+        {neuron_gid: {feature_gid: correlation}} from compute_feature_neuron_correlations
+    feature_data : dict
+        Feature metadata
+    dimensions_info : dict
+        Information about dimensions
+    min_features_per_bin : int
+        Minimum number of features required per bin
+        
+    Returns:
+    --------
+    dict
+        {neuron_gid: {dim_name: {'bin_centers': array, 'responses': array, 'n_features': array}}}
+    """
+    receptive_fields = {}
+    
+    # Extract feature information
+    gids = feature_data.get('gids', [])
+    positions = feature_data.get('positions', [])
+    
+    # Create feature position lookup
+    feature_positions = {}
+    for i, gid in enumerate(gids):
+        if i < len(positions) and len(positions[i]) >= 4:
+            feature_positions[int(gid)] = positions[i]
+    
+    dim_names = list(dimensions_info.keys())
+    
+    for neuron_gid, neuron_correlations in tqdm(correlations.items(), desc="Building receptive fields"):
+        receptive_fields[neuron_gid] = {}
+        
+        # Get valid features for this neuron (those with correlations)
+        valid_features = [(fgid, corr) for fgid, corr in neuron_correlations.items() 
+                         if fgid in feature_positions]
+        
+        if len(valid_features) < min_features_per_bin:
+            continue
+            
+        for dim_idx, dim_name in enumerate(dim_names):
+            # Extract dimension values and correlations
+            dim_values = []
+            dim_correlations = []
+            
+            for feature_gid, correlation in valid_features:
+                pos = feature_positions[feature_gid]
+                if dim_idx < len(pos):
+                    dim_values.append(pos[dim_idx])
+                    dim_correlations.append(correlation)
+            
+            if len(dim_values) < min_features_per_bin:
+                continue
+            
+            # Create bins for this dimension
+            dim_range = dimensions_info[dim_name]['range']
+            scale = dimensions_info[dim_name].get('scale', 'linear')
+            
+            # Adaptive number of bins based on data
+            n_bins = min(10, max(3, len(dim_values) // min_features_per_bin))
+            
+            if scale == 'log' and dim_range[0] > 0:
+                bin_edges = np.logspace(np.log10(dim_range[0]), np.log10(dim_range[1]), n_bins + 1)
+            else:
+                bin_edges = np.linspace(dim_range[0], dim_range[1], n_bins + 1)
+            
+            # Bin the correlations
+            binned_responses = []
+            binned_counts = []
+            bin_centers = []
+            
+            for i in range(n_bins):
+                # Find features in this bin
+                mask = (np.array(dim_values) >= bin_edges[i]) & (np.array(dim_values) < bin_edges[i + 1])
+                if i == n_bins - 1:  # Include right edge in last bin
+                    mask = (np.array(dim_values) >= bin_edges[i]) & (np.array(dim_values) <= bin_edges[i + 1])
+                
+                bin_corrs = np.array(dim_correlations)[mask]
+                
+                if len(bin_corrs) >= 1:  # At least 1 feature
+                    binned_responses.append(np.mean(bin_corrs))
+                    binned_counts.append(len(bin_corrs))
+                else:
+                    binned_responses.append(0.0)
+                    binned_counts.append(0)
+                
+                bin_centers.append((bin_edges[i] + bin_edges[i + 1]) / 2)
+            
+            receptive_fields[neuron_gid][dim_name] = {
+                'bin_centers': np.array(bin_centers),
+                'responses': np.array(binned_responses),
+                'n_features': np.array(binned_counts),
+                'bin_edges': bin_edges
+            }
+    
+    return receptive_fields
+
+
+def compute_binned_feature_correlations(
+    feature_activities,
+    feature_data,
+    dimensions_info,
+    neuron_spike_dict,
+    duration_ms,
+    time_bin_ms=1.0,
+    correlation_method='pearson',
+    n_bins_per_dim=5
+):
+    """
+    Compute correlations with binned feature activities to reduce computational complexity.
+    
+    Features are binned along each of the four dimensions, then activities are averaged
+    within each bin, and correlations are computed with these averaged activities.
+    
+    Parameters:
+    -----------
+    feature_activities : dict
+        {feature_gid: activity_timeseries} from compute_feature_activity_timeseries
+    feature_data : dict
+        Feature metadata
+    dimensions_info : dict
+        Information about feature dimensions
+    neuron_spike_dict : dict
+        {neuron_gid: spike_times_array}
+    duration_ms : float
+        Total simulation duration in milliseconds
+    time_bin_ms : float
+        Time bin size for correlation analysis
+    correlation_method : str
+        'pearson', 'spearman', or 'mutual_info'
+    n_bins_per_dim : int
+        Number of bins per dimension
+        
+    Returns:
+    --------
+    tuple
+        (correlations_dict, binned_activities_dict, bin_info_dict)
+    """
+    # Extract feature information
+    gids = feature_data.get('gids', [])
+    positions = feature_data.get('positions', [])
+    
+    # Create feature position lookup
+    feature_positions = {}
+    for i, gid in enumerate(gids):
+        if i < len(positions) and len(positions[i]) >= 4:
+            feature_positions[int(gid)] = positions[i]
+    
+    # Get valid features (those with both positions and activities)
+    valid_features = []
+    for gid in feature_positions:
+        if gid in feature_activities:
+            valid_features.append(gid)
+    
+    if len(valid_features) == 0:
+        return {}, {}, {}
+    
+    print(f"Binning {len(valid_features)} features across {len(dimensions_info)} dimensions...")
+    
+    dim_names = list(dimensions_info.keys())
+    
+    # Create bins for each dimension
+    bin_info = {}
+    for dim_idx, dim_name in enumerate(dim_names):
+        dim_range = dimensions_info[dim_name]['range']
+        scale = dimensions_info[dim_name].get('scale', 'linear')
+        
+        if scale == 'log' and dim_range[0] > 0:
+            bin_edges = np.logspace(np.log10(dim_range[0]), np.log10(dim_range[1]), n_bins_per_dim + 1)
+        else:
+            bin_edges = np.linspace(dim_range[0], dim_range[1], n_bins_per_dim + 1)
+        
+        bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+        
+        bin_info[dim_name] = {
+            'bin_edges': bin_edges,
+            'bin_centers': bin_centers,
+            'dim_idx': dim_idx,
+            'n_bins': n_bins_per_dim
+        }
+    
+    # Assign features to bins for each dimension
+    feature_bins = {}
+    for dim_name in dim_names:
+        feature_bins[dim_name] = [[] for _ in range(n_bins_per_dim)]
+    
+    for gid in valid_features:
+        pos = feature_positions[gid]
+        
+        for dim_name in dim_names:
+            dim_idx = bin_info[dim_name]['dim_idx']
+            if dim_idx < len(pos):
+                value = pos[dim_idx]
+                bin_edges = bin_info[dim_name]['bin_edges']
+                
+                # Find which bin this feature belongs to
+                bin_idx = np.digitize(value, bin_edges) - 1
+                bin_idx = max(0, min(bin_idx, n_bins_per_dim - 1))  # Clamp to valid range
+                
+                feature_bins[dim_name][bin_idx].append(gid)
+    
+    # Compute averaged activities for each bin
+    binned_activities = {}
+    
+    for dim_name in dim_names:
+        binned_activities[dim_name] = {}
+        
+        for bin_idx in range(n_bins_per_dim):
+            features_in_bin = feature_bins[dim_name][bin_idx]
+            
+            if len(features_in_bin) == 0:
+                # Empty bin - create zero activity
+                example_activity = next(iter(feature_activities.values()))
+                binned_activities[dim_name][bin_idx] = np.zeros_like(example_activity)
+            else:
+                # Average activities of features in this bin
+                activities_in_bin = [feature_activities[gid] for gid in features_in_bin]
+                
+                # Ensure all have same length
+                min_length = min(len(act) for act in activities_in_bin)
+                trimmed_activities = [act[:min_length] for act in activities_in_bin]
+                
+                # Compute average
+                avg_activity = np.mean(trimmed_activities, axis=0)
+                binned_activities[dim_name][bin_idx] = avg_activity
+    
+    # Convert spike trains to rate time series
+    neuron_rates = {}
+    for neuron_gid, spike_times in tqdm(neuron_spike_dict.items(), desc="Converting spikes to rates"):
+        if len(spike_times) > 0:
+            neuron_rates[neuron_gid] = compute_spike_rate_timeseries(
+                spike_times, duration_ms, time_bin_ms
+            )
+        else:
+            n_bins = int(duration_ms / time_bin_ms)
+            neuron_rates[neuron_gid] = np.zeros(n_bins)
+    
+    # Compute correlations with binned activities
+    correlations = {}
+    
+    for neuron_gid, neuron_rate in tqdm(neuron_rates.items(), desc="Computing binned correlations"):
+        correlations[neuron_gid] = {}
+        
+        for dim_name in dim_names:
+            correlations[neuron_gid][dim_name] = {}
+            
+            for bin_idx in range(n_bins_per_dim):
+                bin_activity = binned_activities[dim_name][bin_idx]
+                
+                # Ensure same length
+                min_length = min(len(neuron_rate), len(bin_activity))
+                neuron_data = neuron_rate[:min_length]
+                bin_data = bin_activity[:min_length]
+                
+                # Skip if no activity
+                if np.sum(neuron_data) == 0 or np.sum(np.abs(bin_data)) == 0:
+                    correlations[neuron_gid][dim_name][bin_idx] = 0.0
+                    continue
+                
+                try:
+                    if correlation_method == 'pearson':
+                        corr, p_val = pearsonr(neuron_data, bin_data)
+                        correlations[neuron_gid][dim_name][bin_idx] = corr if not np.isnan(corr) else 0.0
+                    elif correlation_method == 'spearman':
+                        corr, p_val = spearmanr(neuron_data, bin_data)
+                        correlations[neuron_gid][dim_name][bin_idx] = corr if not np.isnan(corr) else 0.0
+                    elif correlation_method == 'mutual_info':
+                        mi = mutual_info_regression(
+                            neuron_data.reshape(-1, 1), 
+                            bin_data, 
+                            discrete_features=False,
+                            random_state=42
+                        )[0]
+                        correlations[neuron_gid][dim_name][bin_idx] = mi
+                    else:
+                        raise ValueError(f"Unknown correlation method: {correlation_method}")
+                        
+                except Exception as e:
+                    warnings.warn(f"Correlation computation failed for neuron {neuron_gid}, dim {dim_name}, bin {bin_idx}: {e}")
+                    correlations[neuron_gid][dim_name][bin_idx] = 0.0
+    
+    return correlations, binned_activities, bin_info
+
+
+def build_binned_receptive_fields(correlations, bin_info):
+    """
+    Build receptive fields from binned correlation data.
+    
+    Parameters:
+    -----------
+    correlations : dict
+        {neuron_gid: {dim_name: {bin_idx: correlation}}} from compute_binned_feature_correlations
+    bin_info : dict
+        Bin information from compute_binned_feature_correlations
+        
+    Returns:
+    --------
+    dict
+        {neuron_gid: {dim_name: {'bin_centers': array, 'responses': array}}}
+    """
+    receptive_fields = {}
+    
+    for neuron_gid, neuron_correlations in tqdm(correlations.items(), desc="Building binned receptive fields"):
+        receptive_fields[neuron_gid] = {}
+        
+        for dim_name, dim_correlations in neuron_correlations.items():
+            if dim_name in bin_info:
+                bin_centers = bin_info[dim_name]['bin_centers']
+                n_bins = bin_info[dim_name]['n_bins']
+                
+                # Extract correlations in bin order
+                responses = []
+                for bin_idx in range(n_bins):
+                    responses.append(dim_correlations.get(bin_idx, 0.0))
+                
+                receptive_fields[neuron_gid][dim_name] = {
+                    'bin_centers': bin_centers,
+                    'responses': np.array(responses),
+                    'n_bins': n_bins,
+                    'bin_edges': bin_info[dim_name]['bin_edges']
+                }
+    
+    return receptive_fields
+
+
 def process_model_spatiotemporal_responses(
     model_output_path,
     model_output_namespace_id,
     input_features_path,
     input_signal_id,
-    populations: Optional[List] = None,
+    populations=None,
     time_range=None,
     time_variable="t",
     include_artificial=True,
+    time_bin_ms=50.0,
+    correlation_method='pearson',
     max_gids=None,
     sample_seed=None,
-    **kwargs,
+    use_signal_dimensions=False,  # Fast signal correlation mode
+    use_binned_features=False,    # Binned feature correlation mode
+    n_bins_per_dim=10,             # Number of bins per dimension
+    include_derivatives=True,
+    include_frequency_bands=True,
+    frequency_bands=[(1, 4), (4, 8), (8, 15), (15, 30), (30, 100)],
+    **kwargs
 ):
     """
-    Process model responses to spatio-temporal stimuli.
+    Characterize spatio-temporal responses using correlation analysis.
+    
+    This function offers three computational approaches:
+    1. Feature-based: Correlates with individual features (detailed but slow)
+    2. Signal dimension: Correlates with signal processing properties (fast but less specific)
+    3. Binned feature: Correlates with averaged activities in feature space bins (balanced)
     
     Parameters:
     -----------
     model_output_path : str
         Path to model output HDF5 file
     model_output_namespace_id : str
-        Namespace ID for spike events in the model output
+        Namespace ID for spike events
     input_features_path : str
         Path to input features HDF5 file
     input_signal_id : str
-        ID of the input signal to analyze
-    populations : List, optional
-        List of populations to analyze (default: all)
-    time_range : Tuple, optional
-        Time range to analyze [tmin, tmax]
-    time_variable : str
-        Name of the time variable in the spike data
-    include_artificial : bool
-        Whether to include artificial cells
+        ID of input signal
+    time_bin_ms : float
+        Time bin size for correlation analysis (milliseconds)
+    correlation_method : str
+        'pearson', 'spearman', or 'mutual_info'
+    max_gids : int, optional
+        Maximum number of neurons to analyze (for computational efficiency)
+    sample_seed : int, optional
+        Random seed for neuron sampling
+    use_signal_dimensions : bool
+        If True, correlate directly with signal dimensions instead of features (fastest)
+    use_binned_features : bool
+        If True, bin features and correlate with averaged activities (balanced approach)
+    n_bins_per_dim : int
+        Number of bins per dimension for binned feature approach
+    include_derivatives : bool
+        Whether to include temporal derivatives in signal dimension analysis
+    include_frequency_bands : bool
+        Whether to include frequency band decompositions
+    frequency_bands : List[Tuple[float, float]]
+        Frequency bands to extract for signal dimension analysis
         
     Returns:
     --------
-    Dict
-        Processed responses with metrics
+    dict
+        Processed responses with correlation-based receptive fields
+        
+    Note:
+    ----
+    Computational complexity comparison:
+    - Feature-based: O(N_neurons × N_features × N_timebins) - most detailed
+    - Binned features: O(N_neurons × N_bins_per_dim × N_dimensions × N_timebins) - balanced
+    - Signal dimensions: O(N_neurons × N_signal_dims × N_timebins) - fastest
     """
-    # Load spike data from model output
+    
     (population_ranges, N) = read_population_ranges(model_output_path)
     population_names = read_population_names(model_output_path)
-
-    total_num_cells = 0
-    pop_num_cells = {}
-    pop_start_inds = {}
-    for k in population_names:
-        pop_start_inds[k] = population_ranges[k][0]
-        pop_num_cells[k] = population_ranges[k][1]
-        total_num_cells += population_ranges[k][1]
-
-    # Replace None with list of populations
+    
     if populations is None:
-        include = []
-        for pop in population_names:
-            include.append(pop)
+        include = list(population_names)
     else:
-        if isinstance(populations, str):
-            include = [populations]
-        else:
-            include = populations
-
-    # sort according to start index
-    include.sort(key=lambda x: pop_start_inds[x])
-
+        include = [populations] if isinstance(populations, str) else populations
+    
+    include.sort(key=lambda x: population_ranges[x][0])
+    
+    # Load spike data
     spkdata = spikedata.read_spike_events(
         model_output_path,
         include,
@@ -173,35 +869,32 @@ def process_model_spatiotemporal_responses(
         spike_train_attr_name=time_variable,
         time_range=time_range,
     )
-
+    
     spkpoplst = spkdata["spkpoplst"]
     spkindlst = spkdata["spkindlst"]
     spktlst = spkdata["spktlst"]
     tmin = spkdata["tmin"]
     tmax = spkdata["tmax"]
     simulation_duration = tmax - tmin
-
+    
     pop_spk_dict = {
         pop_name: (pop_spkinds, pop_spkts)
         for (pop_name, pop_spkinds, pop_spkts) in zip(spkpoplst, spkindlst, spktlst)
     }
-
-    # Load the input signal and feature metadata
+    
+    # Load input signal and features
     with h5py.File(input_features_path, 'r') as f:
         signal_group = f[f'Signals/{input_signal_id}']
         
-        # Get basic metadata
         if 'data' in signal_group:
             input_signal = signal_group['data'][:]
         elif 'stimulus' in signal_group:
             input_signal = signal_group['stimulus'][:]
         else:
             raise RuntimeError(f"Unable to find signal data in group {signal_group}")
-            
-        # Get dimensions metadata
+        
         dimensions = signal_group['dimensions'][:]
         
-        # Extract dimension information
         dim_info = {}
         for dim in dimensions:
             name = dim['name'].decode('utf-8') if isinstance(dim['name'], bytes) else dim['name']
@@ -211,1132 +904,298 @@ def process_model_spatiotemporal_responses(
                 'priority': dim['priority']
             }
         
-        # Get feature data if available
         feature_data = {}
         if 'feature_data' in signal_group:
             feature_group = signal_group['feature_data']
             for key in feature_group.keys():
                 feature_data[key] = feature_group[key][:]
-                
-        # Get basic parameters
-        duration = signal_group.attrs.get('duration', 10.0)  # seconds
-        sample_rate = signal_group.attrs.get('sample_rate', 1000)  # Hz
-        sample_dt_ms = signal_group.attrs.get('sample_dt_ms', 1.0)  # ms
-        n_channels = signal_group.attrs.get('n_channels', input_signal.shape[1] if len(input_signal.shape) > 1 else 1)
-    
-    processed_responses = {}
-    
-    for pop_name in include:
-        if pop_name not in pop_spk_dict:
-            continue
         
-        pop_spkinds, pop_spkts = pop_spk_dict[pop_name]
-        gid_spike_dict = spikedata.make_spike_dict(pop_spkinds, pop_spkts)
-
-        if max_gids is not None:
-            gid_spike_dict = reservoir_sample_dict(gid_spike_dict, max_gids, seed = sample_seed)
+        duration = signal_group.attrs.get('duration', 10.0)
+        sample_rate = signal_group.attrs.get('sample_rate', 1000)
+        n_channels = signal_group.attrs.get('n_channels', 
+                                           input_signal.shape[1] if len(input_signal.shape) > 1 else 1)
+    
+    # Choose correlation approach based on parameters
+    if use_signal_dimensions and use_binned_features:
+        raise ValueError("Cannot use both use_signal_dimensions and use_binned_features simultaneously")
+    
+    if use_signal_dimensions:
+        print("Using fast signal dimension correlation approach...")
+        feature_activities = None  # Not needed for signal dimension approach
         
-        all_spikes = pop_spkts
-        cell_metrics = {}
-
-        # basic cell metrics
-        for gid, spike_times in tqdm(gid_spike_dict.items(), desc="Computing basic cell metrics"):
-            if len(spike_times) == 0:
-                cell_metrics[gid] = {
-                    'firing_rate': 0,
-                    'n_spikes': 0,
-                    'spike_times': [],
-                    'isi': [],
-                    'cv_isi': 0,
-                    'burst_index': 0,
-                    'spatiotemporal_responses': {}
-                }
+        # Process each population
+        processed_responses = {}
+        
+        for pop_name in include:
+            if pop_name not in pop_spk_dict:
                 continue
-
-            spike_times = np.array(spike_times)
-
-            n_spikes = len(spike_times)
-            firing_rate = n_spikes / (simulation_duration / 1000)  # Hz
-
-            # ISI and CV
-            isi = np.diff(spike_times)  # in ms
-            cv_isi = np.std(isi) / np.mean(isi) if len(isi) > 0 else 0
-
-            # burst index (fraction of ISIs < 10ms)
-            burst_threshold = 10  # ms
-            burst_index = np.sum(isi < burst_threshold) / len(isi) if len(isi) > 0 else 0
-
-            # Initialize spatio-temporal responses structure
-            spatiotemporal_responses = {}
             
-            cell_metrics[gid] = {
-                'firing_rate': firing_rate,
-                'n_spikes': n_spikes,
-                'spike_times': spike_times,
-                'isi': isi,
-                'cv_isi': cv_isi,
-                'burst_index': burst_index,
-                'spatiotemporal_responses': spatiotemporal_responses
-            }
-
-        # Compute population spike rate histogram (10ms bins)
-        all_spikes = np.array(sorted(all_spikes))
-        bin_size = 10  # ms
-        n_bins = int(simulation_duration / bin_size)
-        pop_rate, pop_bin_edges = np.histogram(
-            all_spikes, bins=n_bins, range=(0, simulation_duration)
-        )
-
-        # Normalize to spikes/s per cell
-        n_cells = len(gid_spike_dict)
-        if n_cells > 0:
-            pop_rate = pop_rate / (bin_size/1000) / n_cells  # Hz per cell
-        
-        # Precompute dimensional binning information
-        precomputed_dims = {}
-        
-        if feature_data:
-            print("Precomputing dimensional binning information...")
+            print(f"Processing population: {pop_name}")
             
-            # Extract feature dimension data
-            gids = feature_data.get('gids', [])
-            positions = feature_data.get('positions', [])
+            pop_spkinds, pop_spkts = pop_spk_dict[pop_name]
+            gid_spike_dict = spikedata.make_spike_dict(pop_spkinds, pop_spkts)
             
-            # Precompute binning for each dimension
-            for dim_name, dim_data in tqdm(dim_info.items(), desc="Precomputing dimensions"):
-                # Get values for this dimension
-                dim_values = []
-                for i, feature_gid in enumerate(gids):
-                    if i < len(positions) and len(positions[i]) > 0:
-                        # Find the index of this dimension in the positions array
-                        dim_idx = list(dim_info.keys()).index(dim_name)
-                        if dim_idx < positions[i].shape[0]:
-                            dim_values.append((feature_gid, positions[i][dim_idx]))
+            # Sample neurons if requested
+            if max_gids is not None and len(gid_spike_dict) > max_gids:
+                if sample_seed is not None:
+                    np.random.seed(sample_seed)
+                sampled_gids = np.random.choice(
+                    list(gid_spike_dict.keys()), 
+                    size=max_gids, 
+                    replace=False
+                )
+                gid_spike_dict = {gid: gid_spike_dict[gid] for gid in sampled_gids}
+            
+            print("Computing signal dimension correlations...")
+            correlations = compute_signal_dimension_correlations(
+                input_signal,
+                gid_spike_dict,
+                simulation_duration,
+                sample_rate,
+                time_bin_ms,
+                correlation_method,
+                include_derivatives,
+                include_frequency_bands,
+                frequency_bands
+            )
+            
+            # Build simple "receptive fields" based on signal dimensions
+            print("Building signal dimension receptive fields...")
+            receptive_fields = {}
+            for neuron_gid, neuron_correlations in correlations.items():
+                receptive_fields[neuron_gid] = {}
                 
-                if not dim_values:
-                    continue
+                # Group correlations by signal type
+                for signal_name, correlation in neuron_correlations.items():
+                    if 'channel_' in signal_name and not any(x in signal_name for x in ['derivative', 'band']):
+                        # Raw channel responses
+                        if 'raw_channels' not in receptive_fields[neuron_gid]:
+                            receptive_fields[neuron_gid]['raw_channels'] = {
+                                'signal_names': [],
+                                'responses': []
+                            }
+                        receptive_fields[neuron_gid]['raw_channels']['signal_names'].append(signal_name)
+                        receptive_fields[neuron_gid]['raw_channels']['responses'].append(correlation)
                     
-                # Sort by dimension value
-                dim_values.sort(key=lambda x: x[1])
-                
-                # Create bins along this dimension
-                n_bins = min(10, len(dim_values))
-                dim_bin_edges = np.linspace(dim_data['range'][0], dim_data['range'][1], n_bins + 1)
-                
-                # Bin features by dimension value
-                binned_features = [[] for _ in range(n_bins)]
-                for feature_gid, value in dim_values:
-                    bin_idx = min(n_bins - 1, max(0, int((value - dim_data['range'][0]) / 
-                                                       (dim_data['range'][1] - dim_data['range'][0]) * n_bins)))
-                    binned_features[bin_idx].append(feature_gid)
-                
-                # Store precomputed information
-                precomputed_dims[dim_name] = {
-                    'dim_values': dim_values,
-                    'bin_edges': dim_bin_edges,
-                    'binned_features': binned_features,
-                    'bin_centers': [(dim_bin_edges[i] + dim_bin_edges[i+1])/2 for i in range(n_bins)],
-                    'n_bins': n_bins
-                }
-        
-        # Connect the spike responses to features using precomputed dimensional data
-        if precomputed_dims:
-            print("Computing cell-specific responses using precomputed dimensional data...")
-            
-            # For each cell, compute responses across feature dimensions
-            for gid in tqdm(cell_metrics, desc="Computing spatiotemporal responses"):
-                spike_times = cell_metrics[gid]['spike_times']
-                
-                # Skip cells without spikes
-                if len(spike_times) == 0:
-                    continue
-                
-                # Analyze response along each dimension using precomputed data
-                for dim_name, precomputed in precomputed_dims.items():
-                    bin_centers = precomputed['bin_centers']
-                    binned_features = precomputed['binned_features']
-                    n_bins = precomputed['n_bins']
+                    elif 'band_' in signal_name:
+                        # Frequency band responses
+                        if 'frequency_bands' not in receptive_fields[neuron_gid]:
+                            receptive_fields[neuron_gid]['frequency_bands'] = {
+                                'signal_names': [],
+                                'responses': []
+                            }
+                        receptive_fields[neuron_gid]['frequency_bands']['signal_names'].append(signal_name)
+                        receptive_fields[neuron_gid]['frequency_bands']['responses'].append(correlation)
                     
-                    # Compute response for each bin
-                    bin_responses = []
-                    for bin_idx, bin_features in enumerate(binned_features):
-                        if not bin_features:
-                            bin_responses.append(0)
-                            continue
-                            
-                        # For this bin, compute average response to features in this bin
-                        # TODO: Customize this based on feature type
-                        # For now, we'll just use the firing rate as the response
-                        bin_responses.append(cell_metrics[gid]['firing_rate'])
-                    
-                    # Store tuning curve for this dimension
-                    cell_metrics[gid]['spatiotemporal_responses'][dim_name] = {
-                        'bin_centers': bin_centers,
-                        'responses': bin_responses
-                    }
-        
-        # Compute spatial receptive fields if input signal has spatial structure
-        if n_channels > 1:
-            print("Computing spatial and temporal receptive fields...")
+                    elif 'derivative' in signal_name:
+                        # Temporal derivative responses
+                        if 'temporal_derivatives' not in receptive_fields[neuron_gid]:
+                            receptive_fields[neuron_gid]['temporal_derivatives'] = {
+                                'signal_names': [],
+                                'responses': []
+                            }
+                        receptive_fields[neuron_gid]['temporal_derivatives']['signal_names'].append(signal_name)
+                        receptive_fields[neuron_gid]['temporal_derivatives']['responses'].append(correlation)
             
-            # Divide simulation duration into time windows
-            window_size = 500  # ms
-            n_windows = int(simulation_duration / window_size)
-            
-            for gid in tqdm(cell_metrics, desc="Computing receptive fields"):
-                spike_times = cell_metrics[gid]['spike_times']
-                
-                # Skip cells without spikes
-                if len(spike_times) == 0:
-                    continue
-                
-                # Initialize spatial receptive field data
-                spatial_rf = np.zeros(n_channels)
-                temporal_rf = np.zeros(n_windows)
-                
-                # Count spikes in each time window
-                for i in range(n_windows):
-                    window_start = i * window_size
-                    window_end = (i + 1) * window_size
-                    window_spikes = spike_times[(spike_times >= window_start) & (spike_times < window_end)]
-                    temporal_rf[i] = len(window_spikes) / (window_size / 1000)  # Convert to Hz
-                
-                cell_metrics[gid]['spatiotemporal_responses']['spatial_rf'] = spatial_rf
-                cell_metrics[gid]['spatiotemporal_responses']['temporal_rf'] = temporal_rf
-                cell_metrics[gid]['spatiotemporal_responses']['temporal_windows'] = np.arange(n_windows) * window_size
-        
-        # Store all processed data
-        processed_responses[pop_name] = {
-            'input_metadata': {
-                'signal': input_signal,
-                'dimensions': dim_info,
-                'feature_data': feature_data,
-                'duration': duration,
-                'sample_rate': sample_rate,
-                'sample_dt_ms': sample_dt_ms,
-                'n_channels': n_channels
-            },
-            'population_metrics': {
-                'all_spikes': all_spikes,
-                'population_rate': pop_rate,
-                'bin_edges': pop_bin_edges,
-                'mean_rate': np.mean(pop_rate) if len(pop_rate) > 0 else 0,
-                'n_active_cells': sum(1 for gid, metrics in cell_metrics.items() if metrics['n_spikes'] > 0),
-                'total_cells': n_cells,
-            },
-            'cell_metrics': cell_metrics,
-            'precomputed_dims': precomputed_dims  # Store for potential debugging/analysis
-        }
+            # Store processed data for this population
+            processed_responses[pop_name] = _build_population_response_dict(
+                gid_spike_dict, pop_spkts, simulation_duration, correlations, 
+                receptive_fields, input_signal, dim_info, feature_data, 
+                duration, sample_rate, n_channels, correlation_method, time_bin_ms,
+                feature_activities
+            )
     
-    # Return processed data for a single population or all populations
+    elif use_binned_features:
+        print("Using binned feature correlation approach...")
+        print("Computing feature activity time series...")
+        feature_activities = compute_feature_activity_timeseries(
+            input_signal, feature_data, dim_info, sample_rate, time_bin_ms
+        )
+        
+        processed_responses = {}
+        
+        for pop_name in include:
+            if pop_name not in pop_spk_dict:
+                continue
+            
+            print(f"Processing population: {pop_name}")
+            
+            pop_spkinds, pop_spkts = pop_spk_dict[pop_name]
+            gid_spike_dict = spikedata.make_spike_dict(pop_spkinds, pop_spkts)
+            
+            # Sample neurons if requested
+            if max_gids is not None and len(gid_spike_dict) > max_gids:
+                if sample_seed is not None:
+                    np.random.seed(sample_seed)
+                sampled_gids = np.random.choice(
+                    list(gid_spike_dict.keys()), 
+                    size=max_gids, 
+                    replace=False
+                )
+                gid_spike_dict = {gid: gid_spike_dict[gid] for gid in sampled_gids}
+            
+            print("Computing binned feature correlations...")
+            correlations, binned_activities, bin_info = compute_binned_feature_correlations(
+                feature_activities,
+                feature_data,
+                dim_info,
+                gid_spike_dict,
+                simulation_duration,
+                time_bin_ms,
+                correlation_method,
+                n_bins_per_dim
+            )
+            
+            print("Building binned receptive fields...")
+            receptive_fields = build_binned_receptive_fields(correlations, bin_info)
+            
+            # Store processed data for this population (need to flatten correlations for compatibility)
+            flattened_correlations = {}
+            for neuron_gid, neuron_correlations in correlations.items():
+                flattened_correlations[neuron_gid] = {}
+                for dim_name, dim_correlations in neuron_correlations.items():
+                    for bin_idx, correlation in dim_correlations.items():
+                        bin_key = f"{dim_name}_bin_{bin_idx}"
+                        flattened_correlations[neuron_gid][bin_key] = correlation
+            
+            processed_responses[pop_name] = _build_population_response_dict(
+                gid_spike_dict, pop_spkts, simulation_duration, flattened_correlations, 
+                receptive_fields, input_signal, dim_info, feature_data, 
+                duration, sample_rate, n_channels, correlation_method, time_bin_ms,
+                feature_activities
+            )
+            
+            # Add binned activity info to the response
+            processed_responses[pop_name]['binned_activities'] = binned_activities
+            processed_responses[pop_name]['bin_info'] = bin_info
+        
+    else:
+        print("Using detailed feature-based correlation approach...")
+        print("Computing feature activity time series...")
+        feature_activities = compute_feature_activity_timeseries(
+            input_signal, feature_data, dim_info, sample_rate, time_bin_ms
+        )
+        
+        processed_responses = {}
+        
+        for pop_name in include:
+            if pop_name not in pop_spk_dict:
+                continue
+            
+            print(f"Processing population: {pop_name}")
+            
+            pop_spkinds, pop_spkts = pop_spk_dict[pop_name]
+            gid_spike_dict = spikedata.make_spike_dict(pop_spkinds, pop_spkts)
+            
+            # Sample neurons if requested
+            if max_gids is not None and len(gid_spike_dict) > max_gids:
+                if sample_seed is not None:
+                    np.random.seed(sample_seed)
+                sampled_gids = np.random.choice(
+                    list(gid_spike_dict.keys()), 
+                    size=max_gids, 
+                    replace=False
+                )
+                gid_spike_dict = {gid: gid_spike_dict[gid] for gid in sampled_gids}
+            
+            print("Computing feature-neuron correlations...")
+            correlations = compute_feature_neuron_correlations(
+                feature_activities, 
+                gid_spike_dict, 
+                simulation_duration, 
+                time_bin_ms,
+                correlation_method
+            )
+            
+            print("Building dimensional receptive fields...")
+            receptive_fields = build_dimensional_receptive_fields(
+                correlations, 
+                feature_data, 
+                dim_info
+            )
+            
+            # Store processed data for this population
+            processed_responses[pop_name] = _build_population_response_dict(
+                gid_spike_dict, pop_spkts, simulation_duration, correlations, 
+                receptive_fields, input_signal, dim_info, feature_data, 
+                duration, sample_rate, n_channels, correlation_method, time_bin_ms,
+                feature_activities
+            )
+    
     if len(processed_responses) == 1:
         return next(iter(processed_responses.values()))
     else:
         return processed_responses
 
-def plot_spatiotemporal_tuning(processed_data, dim_x, dim_y, metric='firing_rate'):
-    """
-    Plot spatio-temporal tuning across two dimensions.
+
+def _build_population_response_dict(
+    gid_spike_dict, pop_spkts, simulation_duration, correlations, 
+    receptive_fields, input_signal, dim_info, feature_data, 
+    duration, sample_rate, n_channels, correlation_method, time_bin_ms,
+    feature_activities
+):
+    """Helper function to build the population response dictionary."""
     
-    Parameters:
-    -----------
-    processed_data : Dict
-        Processed responses from process_model_spatiotemporal_responses
-    dim_x : str
-        First dimension name for x-axis
-    dim_y : str
-        Second dimension name for y-axis
-    metric : str
-        Metric to visualize (default: 'firing_rate')
+    # Compute basic cell metrics
+    cell_metrics = {}
+    for gid, spike_times in gid_spike_dict.items():
+        spike_times = np.array(spike_times)
+        n_spikes = len(spike_times)
+        firing_rate = n_spikes / (simulation_duration / 1000)
         
-    Returns:
-    --------
-    matplotlib.figure.Figure
-        Generated figure
-    """
-    cell_metrics = processed_data['cell_metrics']
-    input_metadata = processed_data['input_metadata']
-    
-    # Filter active cells
-    active_cells = {gid: metrics for gid, metrics in cell_metrics.items() if metrics['n_spikes'] > 0}
-    
-    if not active_cells:
-        fig, ax = plt.subplots(figsize=(8, 6))
-        ax.text(0.5, 0.5, "No active cells found", ha='center', va='center', fontsize=14)
-        return fig
-    
-    dimensions = input_metadata['dimensions']
-    feature_data = input_metadata.get('feature_data', {})
-    
-    # Check if requested dimensions exist
-    if dim_x not in dimensions or dim_y not in dimensions:
-        fig, ax = plt.subplots(figsize=(8, 6))
-        ax.text(0.5, 0.5, f"Dimensions {dim_x} or {dim_y} not found", ha='center', va='center', fontsize=14)
-        return fig
-    
-    # Get example cells - choose cells with good tuning if possible
-    n_example_cells = min(8, len(active_cells))
-    
-    # Sort cells by firing rate to get the most active cells
-    sorted_cells = sorted(active_cells.items(), key=lambda x: x[1]['firing_rate'], reverse=True)
-    example_cells = [gid for gid, _ in sorted_cells[:n_example_cells]]
-    
-    fig = plt.figure(figsize=(15, 12))
-    
-    # overall heatmap of population responses
-    all_x_vals = []
-    all_y_vals = []
-    all_responses = []
-    
-    for gid, metrics in active_cells.items():
-        # Check if cell has tuning data for both dimensions
-        if (dim_x in metrics['spatiotemporal_responses'] and 
-            dim_y in metrics['spatiotemporal_responses']):
-            
-            x_tuning = metrics['spatiotemporal_responses'][dim_x]
-            y_tuning = metrics['spatiotemporal_responses'][dim_y]
-            
-            for x_bin, x_resp in zip(x_tuning['bin_centers'], x_tuning['responses']):
-                for y_bin, y_resp in zip(y_tuning['bin_centers'], y_tuning['responses']):
-                    all_x_vals.append(x_bin)
-                    all_y_vals.append(y_bin)
-                    
-                    # Use firing rate or other metric as response
-                    if metric == 'firing_rate':
-                        all_responses.append(metrics['firing_rate'])
-                    else:
-                        all_responses.append(metrics.get(metric, 0))
-    
-    # population heatmap
-    if all_x_vals and all_y_vals and all_responses:
-        ax_heatmap = fig.add_subplot(3, 3, 1)
-        
-        # interpolate scattered data onto a regular grid
-        x_range = np.linspace(min(all_x_vals), max(all_x_vals), 100)
-        y_range = np.linspace(min(all_y_vals), max(all_y_vals), 100)
-        X, Y = np.meshgrid(x_range, y_range)
-        
-        Z = griddata((all_x_vals, all_y_vals), all_responses, (X, Y), method='linear')
-        
-        im = ax_heatmap.pcolormesh(X, Y, Z, cmap='viridis', shading='auto')
-        plt.colorbar(im, ax=ax_heatmap, label=metric)
-        
-        ax_heatmap.set_xlabel(dim_x)
-        ax_heatmap.set_ylabel(dim_y)
-        ax_heatmap.set_title(f'Population {metric} Heatmap')
-        
-        if dimensions[dim_x]['scale'] == 'log':
-            ax_heatmap.set_xscale('log')
-        if dimensions[dim_y]['scale'] == 'log':
-            ax_heatmap.set_yscale('log')
-    else:
-        ax_heatmap = fig.add_subplot(3, 3, 1)
-        ax_heatmap.text(0.5, 0.5, "Insufficient data for heatmap", 
-                       ha='center', va='center', fontsize=12)
-    
-    # individual cell tuning curves for sample cells
-    for i, gid in enumerate(example_cells):
-        metrics = cell_metrics[gid]
-        
-        # Create subplot
-        ax = fig.add_subplot(3, 3, i+2)
-        
-        # Check if cell has both tuning curves
-        if (dim_x in metrics['spatiotemporal_responses'] and 
-            dim_y in metrics['spatiotemporal_responses']):
-            
-            x_tuning = metrics['spatiotemporal_responses'][dim_x]
-            y_tuning = metrics['spatiotemporal_responses'][dim_y]
-            
-            # Create x tuning curve
-            ax.plot(x_tuning['bin_centers'], x_tuning['responses'], 
-                   'b-', linewidth=2, label=dim_x)
-            
-            # Create secondary y-axis for y tuning curve
-            ax2 = ax.twinx()
-            ax2.plot(y_tuning['bin_centers'], y_tuning['responses'], 
-                    'r-', linewidth=2, label=dim_y)
-            
-            ax.set_xlabel(dim_x)
-            ax.set_ylabel(f'{dim_x} Response', color='b')
-            ax2.set_ylabel(f'{dim_y} Response', color='r')
-            
-            if dimensions[dim_x]['scale'] == 'log':
-                ax.set_xscale('log')
-            
-            ax.set_title(f'Cell {gid} (Rate: {metrics["firing_rate"]:.2f} Hz)')
+        # ISI metrics
+        if n_spikes > 1:
+            isi = np.diff(spike_times)
+            cv_isi = np.std(isi) / np.mean(isi) if np.mean(isi) > 0 else 0
+            burst_index = np.sum(isi < 10) / len(isi)  # fraction of ISIs < 10ms
         else:
-            ax.text(0.5, 0.5, f"No tuning data for cell {gid}", 
-                   ha='center', va='center', fontsize=10)
-    
-    plt.tight_layout()
-    return fig
-
-
-def plot_spatial_receptive_fields(processed_data, n_cells=9):
-    """
-    Plot spatial receptive fields for example cells.
-    
-    Parameters:
-    -----------
-    processed_data : Dict
-        Processed responses from process_model_spatiotemporal_responses
-    n_cells : int
-        Number of example cells to plot
+            cv_isi = 0
+            burst_index = 0
         
-    Returns:
-    --------
-    matplotlib.figure.Figure
-        Generated figure
-    """
-    cell_metrics = processed_data['cell_metrics']
-    input_metadata = processed_data['input_metadata']
-    
-    # Filter active cells
-    active_cells = {gid: metrics for gid, metrics in cell_metrics.items() if metrics['n_spikes'] > 0}
-    
-    if not active_cells:
-        fig, ax = plt.subplots(figsize=(8, 6))
-        ax.text(0.5, 0.5, "No active cells found", ha='center', va='center', fontsize=14)
-        return fig
-    
-    # Sort cells by firing rate to get the most active cells
-    sorted_cells = sorted(active_cells.items(), key=lambda x: x[1]['firing_rate'], reverse=True)
-    example_cells = [gid for gid, _ in sorted_cells[:n_cells]]
-    
-    fig = plt.figure(figsize=(15, 12))
-    
-    n_channels = input_metadata['n_channels']
-    
-    # Plot receptive fields for example cells
-    for i, gid in enumerate(example_cells):
-        metrics = cell_metrics[gid]
-        
-        ax = fig.add_subplot(3, 3, i+1)
-        
-        # Check if cell has spatial RF data
-        if ('spatiotemporal_responses' in metrics and 
-            'spatial_rf' in metrics['spatiotemporal_responses']):
-            
-            spatial_rf = metrics['spatiotemporal_responses']['spatial_rf']
-            
-            # Normalize RF for visualization
-            if np.max(spatial_rf) > 0:
-                normalized_rf = spatial_rf / np.max(spatial_rf)
-            else:
-                normalized_rf = spatial_rf
-            
-            # Plot RF as bar chart
-            ax.bar(range(n_channels), normalized_rf)
-            ax.set_xlabel('Channel')
-            ax.set_ylabel('Normalized Response')
-            ax.set_title(f'Cell {gid} (Rate: {metrics["firing_rate"]:.2f} Hz)')
-            
-            # If also has temporal RF, show inset
-            if 'temporal_rf' in metrics['spatiotemporal_responses']:
-                temporal_rf = metrics['spatiotemporal_responses']['temporal_rf']
-                temporal_windows = metrics['spatiotemporal_responses']['temporal_windows']
-                
-                axins = ax.inset_axes([0.6, 0.6, 0.35, 0.35])
-                axins.plot(temporal_windows, temporal_rf)
-                axins.set_title('Temporal RF', fontsize=8)
-                axins.tick_params(labelsize=6)
-        else:
-            ax.text(0.5, 0.5, f"No spatial RF for cell {gid}", 
-                   ha='center', va='center', fontsize=10)
-    
-    plt.tight_layout()
-    return fig
-
-
-def plot_dimensional_tuning_curves(processed_data):
-    """
-    Plot tuning curves for each dimension.
-    
-    Parameters:
-    -----------
-    processed_data : Dict
-        Processed responses from process_model_spatiotemporal_responses
-        
-    Returns:
-    --------
-    matplotlib.figure.Figure
-        Generated figure
-    """
-    cell_metrics = processed_data['cell_metrics']
-    input_metadata = processed_data['input_metadata']
-    
-    # Filter active cells
-    active_cells = {gid: metrics for gid, metrics in cell_metrics.items() if metrics['n_spikes'] > 0}
-    
-    if not active_cells:
-        fig, ax = plt.subplots(figsize=(8, 6))
-        ax.text(0.5, 0.5, "No active cells found", ha='center', va='center', fontsize=14)
-        return fig
-    
-    dimensions = input_metadata['dimensions']
-    
-    # Get dimensions that have tuning data
-    tuned_dimensions = set()
-    for gid, metrics in active_cells.items():
-        for dim_name in metrics.get('spatiotemporal_responses', {}):
-            if dim_name in dimensions:
-                tuned_dimensions.add(dim_name)
-    
-    if not tuned_dimensions:
-        fig, ax = plt.subplots(figsize=(8, 6))
-        ax.text(0.5, 0.5, "No dimensional tuning data found", ha='center', va='center', fontsize=14)
-        return fig
-    
-    # Sort dimensions by priority
-    sorted_dimensions = sorted(tuned_dimensions, 
-                              key=lambda d: dimensions[d]['priority'], 
-                              reverse=True)
-    
-    n_dims = len(sorted_dimensions)
-    n_cols = min(3, n_dims)
-    n_rows = (n_dims + n_cols - 1) // n_cols
-    
-    fig = plt.figure(figsize=(15, 4 * n_rows))
-    
-    # Sample cells - get the 10 most active cells
-    sorted_cells = sorted(active_cells.items(), key=lambda x: x[1]['firing_rate'], reverse=True)
-    example_cells = [gid for gid, _ in sorted_cells[:10]]
-    
-    # tuning curves for each dimension
-    for i, dim_name in enumerate(sorted_dimensions):
-        ax = fig.add_subplot(n_rows, n_cols, i+1)
-        
-        # Get tuning curves for example cells
-        for gid in example_cells:
-            if (dim_name in active_cells[gid].get('spatiotemporal_responses', {}) and
-                'bin_centers' in active_cells[gid]['spatiotemporal_responses'][dim_name]):
-                
-                tuning = active_cells[gid]['spatiotemporal_responses'][dim_name]
-                
-                ax.plot(tuning['bin_centers'], tuning['responses'], 
-                       '-o', linewidth=1.5, label=f'Cell {gid}')
-        
-        # Compute population average tuning
-        bin_centers = None
-        all_responses = []
-        
-        for gid, metrics in active_cells.items():
-            if (dim_name in metrics.get('spatiotemporal_responses', {}) and
-                'bin_centers' in metrics['spatiotemporal_responses'][dim_name]):
-                
-                tuning = metrics['spatiotemporal_responses'][dim_name]
-                
-                if bin_centers is None:
-                    bin_centers = tuning['bin_centers']
-                    all_responses = [[] for _ in bin_centers]
-                
-                # Collect responses for each bin
-                for j, resp in enumerate(tuning['responses']):
-                    if j < len(all_responses):
-                        all_responses[j].append(resp)
-        
-        if bin_centers is not None:
-            mean_responses = [np.mean(resps) if resps else 0 for resps in all_responses]
-            sem_responses = [np.std(resps) / np.sqrt(len(resps)) if resps and len(resps) > 1 else 0 
-                            for resps in all_responses]
-            
-            ax.plot(bin_centers, mean_responses, 'k-', linewidth=2.5, label='Population Mean')
-            ax.fill_between(bin_centers, 
-                           [m - s for m, s in zip(mean_responses, sem_responses)],
-                           [m + s for m, s in zip(mean_responses, sem_responses)],
-                           color='k', alpha=0.2)
-        
-        ax.set_xlabel(dim_name)
-        ax.set_ylabel('Response')
-        ax.set_title(f'{dim_name} Tuning')
-        
-        if dimensions[dim_name]['scale'] == 'log':
-            ax.set_xscale('log')
-        
-        if i == 0:
-            ax.legend()
-    
-    plt.tight_layout()
-    return fig
-
-
-def plot_feature_sensitivity_analysis(processed_data):
-    """
-    Analyze and plot sensitivity to different feature dimensions.
-    
-    Parameters:
-    -----------
-    processed_data : Dict
-        Processed responses from process_model_spatiotemporal_responses
-        
-    Returns:
-    --------
-    matplotlib.figure.Figure
-        Generated figure
-    """
-    cell_metrics = processed_data['cell_metrics']
-    input_metadata = processed_data['input_metadata']
-    
-    # Filter active cells
-    active_cells = {gid: metrics for gid, metrics in cell_metrics.items() if metrics['n_spikes'] > 0}
-    
-    if not active_cells:
-        fig, ax = plt.subplots(figsize=(8, 6))
-        ax.text(0.5, 0.5, "No active cells found", ha='center', va='center', fontsize=14)
-        return fig
-    
-    dimensions = input_metadata['dimensions']
-    
-    # Get dimensions that have tuning data
-    tuned_dimensions = set()
-    for gid, metrics in active_cells.items():
-        for dim_name in metrics.get('spatiotemporal_responses', {}):
-            if dim_name in dimensions:
-                tuned_dimensions.add(dim_name)
-    
-    if not tuned_dimensions:
-        fig, ax = plt.subplots(figsize=(8, 6))
-        ax.text(0.5, 0.5, "No dimensional tuning data found", ha='center', va='center', fontsize=14)
-        return fig
-    
-    # Sort dimensions by priority
-    sorted_dimensions = sorted(tuned_dimensions, 
-                              key=lambda d: dimensions[d]['priority'], 
-                              reverse=True)
-    
-    fig = plt.figure(figsize=(15, 12))
-    
-    # sensitivity metrics for each cell and dimension
-    sensitivity_metrics = {}
-    
-    for gid, metrics in active_cells.items():
-        sensitivity_metrics[gid] = {}
-        
-        for dim_name in sorted_dimensions:
-            if (dim_name in metrics.get('spatiotemporal_responses', {}) and
-                'bin_centers' in metrics['spatiotemporal_responses'][dim_name]):
-                
-                tuning = metrics['spatiotemporal_responses'][dim_name]
-                
-                # Calculate metrics:
-                # 1. Modulation depth (max - min) / mean
-                responses = np.array(tuning['responses'])
-                if np.mean(responses) > 0:
-                    mod_depth = (np.max(responses) - np.min(responses)) / np.mean(responses)
-                else:
-                    mod_depth = 0
-                
-                # 2. Coefficient of variation
-                if np.mean(responses) > 0:
-                    cv = np.std(responses) / np.mean(responses)
-                else:
-                    cv = 0
-                
-                # 3. Try to calculate selectivity index
-                if np.sum(responses) > 0:
-                    max_idx = np.argmax(responses)
-                    bin_centers = np.array(tuning['bin_centers'])
-                    preferred_value = bin_centers[max_idx]
-                    
-                    # Calculate weighted average (center of mass)
-                    com = np.sum(responses * bin_centers) / np.sum(responses)
-                    
-                    # Distance from preferred to center of mass, normalized by range
-                    dim_range = dimensions[dim_name]['range'][1] - dimensions[dim_name]['range'][0]
-                    selectivity = abs(preferred_value - com) / dim_range
-                else:
-                    selectivity = 0
-                
-                sensitivity_metrics[gid][dim_name] = {
-                    'modulation_depth': mod_depth,
-                    'cv': cv,
-                    'selectivity': selectivity
-                }
-    
-    # distribution of sensitivity metrics for each dimension
-    metric_to_plot = 'modulation_depth'  # Change this to plot different metrics
-    
-    ax1 = fig.add_subplot(2, 2, 1)
-    
-    # sensitivity values for each dimension
-    dim_sensitivities = {dim: [] for dim in sorted_dimensions}
-    
-    for gid, metrics in sensitivity_metrics.items():
-        for dim_name, dim_metrics in metrics.items():
-            dim_sensitivities[dim_name].append(dim_metrics[metric_to_plot])
-    
-    ax1.boxplot([dim_sensitivities[dim] for dim in sorted_dimensions], 
-                tick_labels=sorted_dimensions)
-    ax1.set_xlabel('Dimension')
-    ax1.set_ylabel(f'{metric_to_plot.replace("_", " ").title()}')
-    ax1.set_title(f'Distribution of {metric_to_plot.replace("_", " ").title()} by Dimension')
-    plt.setp(ax1.get_xticklabels(), rotation=45, ha='right')
-    
-    # sensitivity correlation between dimensions
-    if len(sorted_dimensions) >= 2:
-        ax2 = fig.add_subplot(2, 2, 2)
-        
-        dim1 = sorted_dimensions[0]
-        dim2 = sorted_dimensions[1]
-        
-        x_vals = []
-        y_vals = []
-        
-        for gid, metrics in sensitivity_metrics.items():
-            if dim1 in metrics and dim2 in metrics:
-                x_vals.append(metrics[dim1][metric_to_plot])
-                y_vals.append(metrics[dim2][metric_to_plot])
-        
-        ax2.scatter(x_vals, y_vals, alpha=0.7)
-        ax2.set_xlabel(f'{dim1} {metric_to_plot}')
-        ax2.set_ylabel(f'{dim2} {metric_to_plot}')
-        ax2.set_title(f'Correlation between {dim1} and {dim2} Sensitivity')
-        
-        # Add regression line
-        if len(x_vals) > 2:
-            try:
-                slope, intercept, r_value, p_value, std_err = linregress(x_vals, y_vals)
-                x_range = np.linspace(min(x_vals), max(x_vals), 100)
-                y_fit = slope * x_range + intercept
-                ax2.plot(x_range, y_fit, 'r--', 
-                         label=f'R^2={r_value**2:.2f}, p={p_value:.4f}')
-                ax2.legend()
-            except ValueError as e:
-                warnings.warn(f"Feature sensitivity regression error: {e} ")
-                
-    
-    # cell ranking by sensitivity
-    ax3 = fig.add_subplot(2, 2, 3)
-    
-    overall_sensitivity = {}
-    
-    for gid, metrics in sensitivity_metrics.items():
-        # Average sensitivity across dimensions
-        sensitivities = [dim_metrics[metric_to_plot] for dim_metrics in metrics.values()]
-        overall_sensitivity[gid] = np.mean(sensitivities) if sensitivities else 0
-    
-    sorted_cells = sorted(overall_sensitivity.items(), key=lambda x: x[1], reverse=True)
-    top_n_cells = 20
-    
-    if sorted_cells:
-        cell_gids = [gid for gid, _ in sorted_cells[:top_n_cells]]
-        cell_values = [val for _, val in sorted_cells[:top_n_cells]]
-        
-        ax3.bar(range(len(cell_gids)), cell_values)
-        ax3.set_xticks(range(len(cell_gids)))
-        ax3.set_xticklabels([str(gid) for gid in cell_gids], rotation=90)
-        ax3.set_xlabel('Cell GID')
-        ax3.set_ylabel(f'Average {metric_to_plot.replace("_", " ").title()}')
-        ax3.set_title(f'Top {top_n_cells} Cells by {metric_to_plot.replace("_", " ").title()}')
-    
-    # information-theoretic metrics if available
-    ax4 = fig.add_subplot(2, 2, 4)
-    
-    # Calculate mutual information for each dimension
-    mi_values = {}
-    
-    for dim_name in sorted_dimensions:
-        # Collect data for MI calculation
-        feature_values = []
-        response_values = []
-        
-        for gid, metrics in active_cells.items():
-            if (dim_name in metrics.get('spatiotemporal_responses', {}) and
-                'bin_centers' in metrics['spatiotemporal_responses'][dim_name]):
-                
-                tuning = metrics['spatiotemporal_responses'][dim_name]
-                
-                # Add each bin center and response as a data point
-                for bin_center, response in zip(tuning['bin_centers'], tuning['responses']):
-                    feature_values.append(bin_center)
-                    response_values.append(response)
-        
-        # Calculate MI if enough data points
-        if len(feature_values) >= 10:
-            try:
-                # Convert to numpy arrays
-                feature_array = np.array(feature_values).reshape(-1, 1)
-                response_array = np.array(response_values)
-                
-                # Calculate MI
-                mi = mutual_info_regression(feature_array, response_array)[0]
-                mi_values[dim_name] = mi
-            except Exception as e:
-                print(f"Error calculating MI for {dim_name}: {e}")
-                mi_values[dim_name] = 0
-        else:
-            mi_values[dim_name] = 0
-    
-    if mi_values:
-        dims = list(mi_values.keys())
-        mis = [mi_values[dim] for dim in dims]
-        
-        ax4.bar(dims, mis)
-        ax4.set_xlabel('Dimension')
-        ax4.set_ylabel('Mutual Information (bits)')
-        ax4.set_title('Information Content by Dimension')
-        plt.setp(ax4.get_xticklabels(), rotation=45, ha='right')
-    else:
-        ax4.text(0.5, 0.5, "Insufficient data for MI calculation", 
-                ha='center', va='center', fontsize=12)
-    
-    plt.tight_layout()
-    return fig
-
-
-def plot_spatiotemporal_response_examples(processed_data, n_cells=10):
-    """
-    Plot detailed spatiotemporal response examples for selected cells.
-    
-    Parameters:
-    -----------
-    processed_data : Dict
-        Processed responses from process_model_spatiotemporal_responses
-    n_cells : int
-        Number of example cells to plot
-        
-    Returns:
-    --------
-    matplotlib.figure.Figure
-        Generated figure
-    """
-    cell_metrics = processed_data['cell_metrics']
-    input_metadata = processed_data['input_metadata']
-    
-    # Filter active cells
-    active_cells = {gid: metrics for gid, metrics in cell_metrics.items() if metrics['n_spikes'] > 0}
-    
-    if not active_cells:
-        fig, ax = plt.subplots(figsize=(8, 6))
-        ax.text(0.5, 0.5, "No active cells found", ha='center', va='center', fontsize=14)
-        return fig
-    
-    dimensions = input_metadata['dimensions']
-    input_signal = input_metadata['signal']
-    
-    # Sort cells by firing rate to get the most active cells
-    sorted_cells = sorted(active_cells.items(), key=lambda x: x[1]['firing_rate'], reverse=True)
-    example_cells = [gid for gid, _ in sorted_cells[:n_cells]]
-    
-    fig = plt.figure(figsize=(15, 4 * n_cells))
-    
-    # For each example cell, create a row of plots
-    for i, gid in enumerate(example_cells):
-        metrics = cell_metrics[gid]
-        
-        # spike raster
-        ax1 = fig.add_subplot(n_cells, 3, i*3 + 1)
-        
-        spike_times = metrics['spike_times']
-        if len(spike_times) > 0:
-            ax1.vlines(spike_times, 0, 1, color='k')
-            ax1.set_ylim(0, 1.2)
-            ax1.set_yticks([])
-        
-        ax1.set_xlabel('Time (ms)')
-        ax1.set_title(f'Cell {gid} Spike Train')
-        
-        # ISI distribution
-        ax2 = fig.add_subplot(n_cells, 3, i*3 + 2)
-        
-        isi = metrics['isi']
-        if len(isi) > 0:
-            ax2.hist(isi, bins=30, alpha=0.7)
-            ax2.axvline(x=10, color='r', linestyle='--', label='10 ms')
-            
-            # Add burst index annotation
-            burst_index = metrics['burst_index']
-            ax2.text(0.7, 0.9, f'Burst index: {burst_index:.2f}', 
-                    transform=ax2.transAxes, fontsize=10)
-        
-        ax2.set_xlabel('ISI (ms)')
-        ax2.set_ylabel('Count')
-        ax2.set_title('ISI Distribution')
-        ax2.legend()
-        
-        # 2D tuning surface for key dimensions
-        ax3 = fig.add_subplot(n_cells, 3, i*3 + 3)
-        
-        # Find key dimensions (preferably temporal and spatial)
-        temporal_dim = next((name for name in dimensions if 'temporal' in name.lower() and 'frequency' not in name.lower()), None)
-        freq_dim = next((name for name in dimensions if 'frequency' in name.lower()), None)
-        spatial_dim = next((name for name in dimensions if 'spatial' in name.lower() and 'width' not in name.lower()), None)
-        
-        dim_x = freq_dim if freq_dim else (temporal_dim if temporal_dim else None)
-        dim_y = spatial_dim if spatial_dim else (temporal_dim if temporal_dim != dim_x else None)
-        
-        if (dim_x and dim_y and 
-            dim_x in metrics.get('spatiotemporal_responses', {}) and 
-            dim_y in metrics.get('spatiotemporal_responses', {})):
-            
-            x_tuning = metrics['spatiotemporal_responses'][dim_x]
-            y_tuning = metrics['spatiotemporal_responses'][dim_y]
-            
-            # Create meshgrid for 2D visualization
-            x_vals = np.array(x_tuning['bin_centers'])
-            y_vals = np.array(y_tuning['bin_centers'])
-            
-            X, Y = np.meshgrid(x_vals, y_vals)
-            Z = np.outer(y_tuning['responses'], x_tuning['responses'])
-            
-            im = ax3.pcolormesh(X, Y, Z, cmap='viridis', shading='auto')
-            plt.colorbar(im, ax=ax3, label='Response')
-            
-            ax3.set_xlabel(dim_x)
-            ax3.set_ylabel(dim_y)
-            ax3.set_title(f'2D Tuning Surface')
-            
-            if dimensions[dim_x]['scale'] == 'log':
-                ax3.set_xscale('log')
-            if dimensions[dim_y]['scale'] == 'log':
-                ax3.set_yscale('log')
-        else:
-            ax3.text(0.5, 0.5, "Insufficient tuning data", 
-                    ha='center', va='center', fontsize=12)
-    
-    plt.tight_layout()
-    return fig
-
-
-def plot_dynamic_spatiotemporal_responses(processed_data):
-    """
-    Plot how spatiotemporal responses change over time.
-    
-    Parameters:
-    -----------
-    processed_data : Dict
-        Processed responses from process_model_spatiotemporal_responses
-        
-    Returns:
-    --------
-    matplotlib.figure.Figure
-        Generated figure
-    """
-    cell_metrics = processed_data['cell_metrics']
-    input_metadata = processed_data['input_metadata']
-    population_metrics = processed_data['population_metrics']
-    
-    duration = input_metadata['duration']
-    
-    fig = plt.figure(figsize=(15, 12))
-    
-    # population rate over time
-    ax1 = fig.add_subplot(3, 1, 1)
-    
-    pop_rate = population_metrics['population_rate']
-    pop_bin_edges = population_metrics['bin_edges']
-    
-    # Ensure bin_centers matches pop_rate dimensions
-    # Recalculate bin_centers from the stored bin_edges to ensure consistency
-    if len(pop_bin_edges) == len(pop_rate) + 1:
-        # Standard histogram format: bin_edges has n+1 elements for n bins
-        bin_centers = (pop_bin_edges[:-1] + pop_bin_edges[1:]) / 2
-    elif len(pop_bin_edges) == len(pop_rate):
-        # Edge case: if bin_edges somehow has same length as pop_rate
-        bin_centers = pop_bin_edges
-    else:
-        # Fallback: create time axis based on pop_rate length and known bin size
-        warnings.warn(f"Dimension mismatch between bin_edges ({len(pop_bin_edges)}) and pop_rate ({len(pop_rate)})")
-        
-        # Use 10ms bins
-        bin_size = 10  # ms
-        bin_centers = np.arange(len(pop_rate)) * bin_size + bin_size/2
-    
-    # Verify dimensions before plotting
-    if len(bin_centers) != len(pop_rate):
-        warnings.warn(f"Still have dimension mismatch - bin_centers: {len(bin_centers)}, pop_rate: {len(pop_rate)}")
-        # Create a simple index-based x-axis as last resort
-        bin_centers = np.arange(len(pop_rate))
-        ax1.set_xlabel('Bin Index')
-    else:
-        ax1.set_xlabel('Time (ms)')
-    
-    ax1.plot(bin_centers, pop_rate)
-    ax1.set_ylabel('Firing Rate (Hz/cell)')
-    ax1.set_title('Population Firing Rate')
-    
-    # input signal if available
-    if 'signal' in input_metadata and input_metadata['signal'] is not None:
-        ax2 = fig.add_subplot(3, 1, 2)
-        
-        signal_data = input_metadata['signal']
-        
-        # If signal is 2D, plot first few channels
-        if len(signal_data.shape) > 1:
-            max_channels = min(5, signal_data.shape[1])
-            for ch in range(max_channels):
-                ax2.plot(signal_data[:, ch], label=f'Channel {ch}', alpha=0.7)
-            ax2.legend()
-        else:
-            ax2.plot(signal_data)  # Fixed: was 'signal' instead of 'signal_data'
-        
-        ax2.set_xlabel('Sample')
-        ax2.set_ylabel('Amplitude')
-        ax2.set_title('Input Signal')
-    
-    # spectrogram or time-frequency analysis of population response
-    ax3 = fig.add_subplot(3, 1, 3)
-    
-    if len(pop_rate) > 50:  # Need enough data for spectrogram
-        # Calculate sampling frequency from bin spacing
-        if len(bin_centers) > 1:
-            dt_ms = bin_centers[1] - bin_centers[0]  # time step in ms
-            fs = 1000 / dt_ms  # Convert to Hz
-        else:
-            fs = 100  # Default fallback sampling rate
-        
-        try:
-            f, t, Sxx = signal.spectrogram(pop_rate, fs=fs, nperseg=min(256, len(pop_rate)//4))
-            
-            # Convert time axis back to ms if needed
-            if ax1.get_xlabel() == 'Time (ms)':
-                t = t * 1000  # Convert seconds to ms
-            
-            im = ax3.pcolormesh(t, f, 10 * np.log10(Sxx + 1e-10), shading='gouraud', cmap='viridis')
-            plt.colorbar(im, ax=ax3, label='Power/Frequency (dB/Hz)')
-            
-            ax3.set_ylabel('Frequency (Hz)')
-            if ax1.get_xlabel() == 'Time (ms)':
-                ax3.set_xlabel('Time (ms)')
-            else:
-                ax3.set_xlabel('Time (s)')
-            ax3.set_title('Population Response Spectrogram')
-            
-        except Exception as e:
-            warnings.warn(f"Could not generate spectrogram: {e}")
-            ax3.text(0.5, 0.5, f"Spectrogram generation failed:\n{str(e)}", 
-                    ha='center', va='center', fontsize=12)
-    else:
-        ax3.text(0.5, 0.5, "Insufficient data for spectrogram", 
-                ha='center', va='center', fontsize=14)
-    
-    plt.tight_layout()
-    return fig
-
-
-def analyze_spatiotemporal_responses(model_output_path,
-                                     model_output_namespace_id,
-                                     input_features_path,
-                                     input_signal_id,
-                                     populations: Optional[List] = None,
-                                     time_range=None,
-                                     time_variable="t",
-                                     include_artificial=True,
-                                     output_dir=None,
-                                     fig_format='svg',
-                                     analyses=['tuning_curves',
-                                               'sensitivity_analysis',
-                                               'receptive_fields',
-                                               'response_examples',
-                                               'dynamic_responses'],
-                                     max_gids=None,
-                                     sample_seed=None):
-    """
-    Analysis of model responses to spatio-temporal feature stimuli.
-    
-    Parameters:
-    -----------
-    model_output_path : path
-        Path to HDF5 file with model responses.
-    model_output_namespace_id : str
-        Namespace with model output spikes.
-    input_features_path : path
-        Path to HDF5 file with input signal and features.
-    input_signal_id : str
-        Namespaces with input signal data.
-    populations : List, optional
-        List of populations to analyze (default: all)
-    time_range : Tuple, optional
-        Time range to analyze [tmin, tmax]
-    time_variable : str
-        Name of the time variable in the spike data
-    include_artificial : bool
-        Whether to include artificial cells
-    output_dir : str, optional
-        Directory to save output figures.
-    analyses : List
-        List of analyses to perform
-    
-    Returns:
-    --------
-    Dict
-        Dictionary containing processed data and figures
-    """
-
-    processed_data = process_model_spatiotemporal_responses(
-        model_output_path = model_output_path,
-        model_output_namespace_id = model_output_namespace_id,
-        input_features_path = input_features_path,
-        input_signal_id = input_signal_id,
-        populations = populations,
-        time_range=time_range,
-        time_variable=time_variable,
-        include_artificial=include_artificial,
-        max_gids=max_gids,
-        sample_seed=sample_seed
+        # Store metrics with correlation-based receptive fields
+        cell_metrics[gid] = {
+            'firing_rate': firing_rate,
+            'n_spikes': n_spikes,
+            'spike_times': spike_times,
+            'cv_isi': cv_isi,
+            'burst_index': burst_index,
+            'feature_correlations': correlations.get(gid, {}),
+            'receptive_fields': receptive_fields.get(gid, {}),
+            'max_correlation': max(correlations.get(gid, {}).values()) if correlations.get(gid) else 0,
+            'mean_correlation': np.mean(list(correlations.get(gid, {}).values())) if correlations.get(gid) else 0,
+        }
+    
+    # Population-level metrics
+    all_spikes = np.array(sorted(pop_spkts))
+    bin_size = 10  # ms
+    n_bins = int(simulation_duration / bin_size)
+    pop_rate, pop_bin_edges = np.histogram(
+        all_spikes, bins=n_bins, range=(0, simulation_duration)
     )
     
-    figures = {}
-    
-    input_metadata = processed_data['input_metadata']
-    dimensions = input_metadata['dimensions']
-    
-    temporal_dim = next((name for name in dimensions if 'temporal' in name.lower() and 'frequency' not in name.lower()), None)
-    freq_dim = next((name for name in dimensions if 'frequency' in name.lower()), None)
-    spatial_dim = next((name for name in dimensions if 'spatial' in name.lower() and 'width' not in name.lower()), None)
-    
-    dim_x = freq_dim if freq_dim else (temporal_dim if temporal_dim else None)
-    dim_y = spatial_dim if spatial_dim else (temporal_dim if temporal_dim != dim_x else None)
-    
-    if 'tuning_curves' in analyses:
-        print("Generating dimensional tuning curves plot...")
-        figures['dimensional_tuning'] = plot_dimensional_tuning_curves(processed_data)
-        
-        if dim_x and dim_y:
-            print(f"Generating spatiotemporal tuning plot for {dim_x} vs {dim_y}...")
-            figures['spatiotemporal_tuning'] = plot_spatiotemporal_tuning(
-                processed_data, dim_x, dim_y)
-            
-    if 'sensitivity_analysis' in analyses:
-        print("Generating feature sensitivity analysis plot...")
-        figures['sensitivity_analysis'] = plot_feature_sensitivity_analysis(processed_data)
-    
-    if 'receptive_fields' in analyses:
-        print("Generating spatial receptive fields plot...")
-        figures['receptive_fields'] = plot_spatial_receptive_fields(processed_data)
-    
-    if 'response_examples' in analyses:
-        print("Generating spatiotemporal response examples plot...")
-        figures['response_examples'] = plot_spatiotemporal_response_examples(processed_data)
-    
-    if 'dynamic_responses' in analyses:
-        print("Generating dynamic spatiotemporal responses plot...")
-        figures['dynamic_responses'] = plot_dynamic_spatiotemporal_responses(processed_data)
-    
-    if output_dir:
-        os.makedirs(output_dir, exist_ok=True)
-        
-        for name, fig in figures.items():
-            fig.savefig(os.path.join(output_dir, f"{name}.{fig_format}"), dpi=600, bbox_inches='tight')
-            plt.close(fig)
+    n_cells = len(gid_spike_dict)
+    if n_cells > 0:
+        pop_rate = pop_rate / (bin_size/1000) / n_cells
     
     return {
-        'processed_data': processed_data,
-        'figures': figures
+        'input_metadata': {
+            'signal': input_signal,
+            'dimensions': dim_info,
+            'feature_data': feature_data,
+            'duration': duration,
+            'sample_rate': sample_rate,
+            'n_channels': n_channels
+        },
+        'population_metrics': {
+            'all_spikes': all_spikes,
+            'population_rate': pop_rate,
+            'bin_edges': pop_bin_edges,
+            'mean_rate': np.mean(pop_rate) if len(pop_rate) > 0 else 0,
+            'n_active_cells': sum(1 for metrics in cell_metrics.values() if metrics['n_spikes'] > 0),
+            'total_cells': n_cells,
+            'correlation_method': correlation_method,
+            'time_bin_ms': time_bin_ms,
+        },
+        'cell_metrics': cell_metrics,
+        'feature_activities': feature_activities,  # Store for debugging/analysis
     }
-
-if __name__ == "__main__":
-    analyze_spatiotemporal_responses(
-        model_output_path = "./results/Full_Scale_Dynamic_Response_Features_7341938/Full_Scale_results.h5",
-        model_output_namespace_id = "Spike Events",
-        input_features_path = "./datasets/Full_Scale_CA1_dynamical_response_spike_trains_20250912.h5",
-        input_signal_id = "drc_features_20250912",
-        populations = ["PYR"],
-        include_artificial = False,
-        output_dir="figures/spatiotemporal_analysis",
-        fig_format="png",
-        analyses=['tuning_curves', 'sensitivity_analysis', 'response_examples', 'dynamic_responses'],
-        max_gids=50000,
-        sample_seed=67
-    )

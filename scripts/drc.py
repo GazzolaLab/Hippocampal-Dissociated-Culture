@@ -2140,6 +2140,7 @@ if __name__ == "__main__":
                                             population_name = "DRC",
                                             register_population = True,
                                             sampling_strategy = "random",
+                                            modulation_hz = 5,
                                             n_features = 150,
                                             io_kwargs={'io_size': 1,
                                                        'write_size': 10,

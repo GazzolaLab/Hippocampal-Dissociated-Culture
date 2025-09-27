@@ -1,6 +1,7 @@
 import numpy as np
 from tqdm import tqdm
 from typing import Optional, List
+from mpi4py import MPI
 
 from analyze_spatiotemporal_responses import process_model_spatiotemporal_responses
 from plot_spatiotemporal_analysis import (save_all_plots,
@@ -32,7 +33,9 @@ def analyze_spatiotemporal_responses(model_output_path,
                                                'response_examples',
                                                'dynamic_responses'],
                                      max_gids=None,
-                                     sample_seed=None):
+                                     sample_seed=None,
+                                     comm=None,
+                                     root=0):
     """
     Analysis of model responses to spatio-temporal feature stimuli.
     
@@ -65,6 +68,12 @@ def analyze_spatiotemporal_responses(model_output_path,
         Dictionary containing processed data and figures
     """
 
+    if comm is None:
+        comm = MPI.COMM_WORLD
+
+    rank = comm.rank
+    size = comm.size
+
     processed_data = process_model_spatiotemporal_responses(
         model_output_path = model_output_path,
         model_output_namespace_id = model_output_namespace_id,
@@ -83,31 +92,37 @@ def analyze_spatiotemporal_responses(model_output_path,
         include_frequency_bands=include_frequency_bands,
         frequency_bands=frequency_bands,
         max_gids=max_gids,
-        sample_seed=sample_seed
+        sample_seed=sample_seed,
+        comm=comm,
+        root=root
     )
 
     # analyses=['tuning_curves', 'sensitivity_analysis', 'response_examples', 'dynamic_responses']
-    
-    fig1 = plot_feature_activities(
-        processed_data['feature_activities'],
-        processed_data['input_metadata']['feature_data'],
-        processed_data['input_metadata']['dimensions']
-    )
-    
-    fig2 = plot_dimensional_receptive_fields(processed_data, max_neurons=20)
-    
-    fig3 = plot_receptive_field_heatmaps(
-        processed_data, 
-        'temporal_frequency', 
-        'spatial_position'
-    )
 
-    saved_files = save_all_plots(
-        processed_data,
-        output_dir="./figures/spatiotemporal_analysis",
-        file_format=fig_format,
-        dpi=300
-    )
+    if rank == root:
+        
+        fig1 = plot_feature_activities(
+            processed_data['feature_activities'],
+            processed_data['input_metadata']['feature_data'],
+            processed_data['input_metadata']['dimensions']
+        )
+        
+        fig2 = plot_dimensional_receptive_fields(processed_data, max_neurons=20)
+        
+        fig3 = plot_receptive_field_heatmaps(
+            processed_data, 
+            'temporal_frequency', 
+            'spatial_position'
+        )
+        
+        saved_files = save_all_plots(
+            processed_data,
+            output_dir="./figures/spatiotemporal_analysis",
+            file_format=fig_format,
+            dpi=300
+        )
+
+    comm.barrier()
 
 
 if __name__ == "__main__":
@@ -125,7 +140,7 @@ if __name__ == "__main__":
         use_binned_features=True,
 #        analyses=['tuning_curves'],
 #        analyses=['tuning_curves', 'sensitivity_analysis', 'response_examples', 'dynamic_responses'],
-        max_gids=500,
+        max_gids=1000,
         sample_seed=67
     )
     

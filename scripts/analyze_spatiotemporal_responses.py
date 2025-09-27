@@ -13,15 +13,19 @@ from sklearn.feature_selection import mutual_info_regression
 from collections import defaultdict
 import warnings
 from tqdm import tqdm
-from neuroh5.io import read_cell_attributes, read_population_names, read_population_ranges
+from neuroh5.io import read_population_names, read_population_ranges
 from miv_simulator import spikedata
 import h5py
+import logging
+
 from drc import SpatioTemporalModality
 
 K = TypeVar('K')  # Key type
 V = TypeVar('V')  # Value type
 T = TypeVar('T')  # Generic type
 
+logger = logging.getLogger("spatiotemporal_responses")
+logger.setLevel(logging.INFO)
 
 def reservoir_sample_dict(
     data: Dict[K, V], 
@@ -77,7 +81,10 @@ def compute_feature_activity_timeseries(
     feature_data, 
     dimensions_info, 
     sample_rate=1000, 
-    time_bin_ms=50.0
+    time_bin_ms=50.0,
+    comm=None,
+    root=0,
+    progress_interval=1000
 ):
     """
     Compute activity time series for each input feature based on its spatio-temporal filter.
@@ -94,24 +101,35 @@ def compute_feature_activity_timeseries(
         Sampling rate in Hz
     time_bin_ms : float
         Time bin size in milliseconds for discretization
-        
+    comm : mpi4py communicator object, optional
+        MPI communicator for distributed operation
+    root : int
+        Root MPI rank (default 0)
+    progress_interval : int
+        Interval for indicating progress on the root rank
+    
     Returns:
     --------
     dict
         {feature_gid: activity_timeseries} for each feature
     """
+
+    if comm is None:
+        comm = MPI.COMM_WORLD
+
+    rank = comm.rank
+    size = comm.size
+    
     if len(input_signal.shape) == 1:
         input_signal = input_signal.reshape(-1, 1)
-    
-    n_timepoints, n_channels = input_signal.shape
-    duration_ms = (n_timepoints / sample_rate) * 1000
-    n_time_bins = int(duration_ms / time_bin_ms)
-    
+        
     # Extract feature information
     gids = feature_data.get('gids', [])
     positions = feature_data.get('positions', [])
-    
-    feature_activities = {}
+
+    n_timepoints, n_channels = input_signal.shape
+    duration_ms = (n_timepoints / sample_rate) * 1000
+    n_time_bins = int(duration_ms / time_bin_ms)
     
     # Get dimension indices
     dim_names = list(dimensions_info.keys())
@@ -123,12 +141,28 @@ def compute_feature_activity_timeseries(
     spatio_temporal_modality = SpatioTemporalModality(input_shape=input_signal.shape,
                                                       sample_rate=sample_rate)
 
-    for i, gid in enumerate(tqdm(gids, desc="Computing feature activities")):
-        if i >= len(positions) or len(positions[i]) < 4:
+    # Determine work distribution
+    total_features = len(gids)
+
+    local_idxs = []
+    for i in range(total_features):
+        if i % size == rank:
+            local_idxs.append(i)
+
+    local_feature_activities = {}
+
+    if rank == root:
+        logger.info("Computing feature activities...")
+        
+    for local_idx, global_idx in enumerate(local_idxs):
+        
+        if global_idx >= len(positions) or len(positions[global_idx]) < 4:
             continue
             
+        gid = gids[global_idx]
+        
         # Extract feature parameters
-        pos = positions[i]
+        pos = positions[global_idx]
         temporal_position = pos[temp_pos_idx]  # 0-1, relative position in time
         temporal_frequency = pos[temp_freq_idx]  # Hz
         spatial_position = pos[spatial_pos_idx]  # 0-1, relative position in space
@@ -142,10 +176,28 @@ def compute_feature_activity_timeseries(
         # Bin activity into time bins
         binned_activity = bin_timeseries(activity, time_bin_ms, sample_rate)
         
-        feature_activities[int(gid)] = binned_activity
-    
-    return feature_activities
+        local_feature_activities[int(gid)] = binned_activity
 
+        if rank == root and (local_idx + 1) % progress_interval == 0:
+            estimated_global = (local_idx + 1) * size  # Rough estimate
+            progress_pct = min(100, (estimated_global / total_features) * 100)
+            logger.info(f"Progress: ~{progress_pct:.1f}% (rank 0: {local_idx + 1} / {len(local_idxs)})")
+    
+    # Use gather instead of allgather to reduce memory usage
+    all_feature_activities = comm.gather(local_feature_activities, root=root)
+    
+    # Combine results only on root, then broadcast
+    if rank == root:
+        combined_activities = {}
+        for local_dict in all_feature_activities:
+            combined_activities.update(local_dict)
+    else:
+        combined_activities = None
+    
+    # Broadcast combined results to all ranks
+    combined_activities = comm.bcast(combined_activities, root=root)
+        
+    return combined_activities
 
 
 def bin_timeseries(timeseries, bin_size_ms, sample_rate):
@@ -190,7 +242,10 @@ def compute_signal_dimension_correlations(
     correlation_method='pearson',
     include_derivatives=True,
     include_frequency_bands=True,
-    frequency_bands=[(1, 4), (4, 8), (8, 15), (15, 30), (30, 100)]
+    frequency_bands=[(1, 4), (4, 8), (8, 15), (15, 30), (30, 100)],
+    comm=None,
+    root=0,
+    progress_interval=1000
 ):
     """
     Compute correlations between neurons and input signal dimensions directly.
@@ -222,6 +277,16 @@ def compute_signal_dimension_correlations(
     dict
         {neuron_gid: {signal_dimension: correlation_value}}
     """
+    
+    if comm is None:
+        comm = MPI.COMM_WORLD
+
+    rank = comm.rank
+    size = comm.size
+
+    local_total = len(neuron_spike_dict)
+    total_gids = comm.allreduce(local_total, op=MPI.SUM)
+    
     if len(input_signal.shape) == 1:
         input_signal = input_signal.reshape(-1, 1)
     
@@ -252,11 +317,6 @@ def compute_signal_dimension_correlations(
     
     # 3. Spatial derivatives (if multichannel)
     if n_channels > 1:
-        for t in range(0, n_timepoints, max(1, int(sample_rate * time_bin_ms / 1000))):
-            spatial_profile = input_signal[t, :]
-            spatial_grad = np.gradient(spatial_profile)
-            # Store as single value per time bin
-        
         # Compute spatial gradient over time
         spatial_gradients = []
         step_size = max(1, int(sample_rate * time_bin_ms / 1000))
@@ -311,7 +371,9 @@ def compute_signal_dimension_correlations(
     
     # Convert spike trains to rate time series
     neuron_rates = {}
-    for neuron_gid, spike_times in tqdm(neuron_spike_dict.items(), desc="Converting spikes to rates"):
+    if rank == root:
+        logger.info("Converting spikes to rates...")
+    for i, (neuron_gid, spike_times) in enumerate(neuron_spike_dict.items()):
         if len(spike_times) > 0:
             neuron_rates[neuron_gid] = compute_spike_rate_timeseries(
                 spike_times, duration_ms, time_bin_ms
@@ -319,9 +381,15 @@ def compute_signal_dimension_correlations(
         else:
             n_bins = int(duration_ms / time_bin_ms)
             neuron_rates[neuron_gid] = np.zeros(n_bins)
+        if rank == root and (i + 1) % progress_interval == 0:
+            estimated_global = (i + 1) * size  # Rough estimate
+            progress_pct = min(100, (estimated_global / total_gids) * 100)
+            logger.info(f"Progress: ~{progress_pct:.1f}% (rank 0: {i + 1} / {local_total})")
     
     # Compute correlations
-    for neuron_gid, neuron_rate in tqdm(neuron_rates.items(), desc="Computing signal correlations"):
+    if rank == root:
+        logger.info("Computing signal correlations...")
+    for i, (neuron_gid, neuron_rate) in enumerate(neuron_rates.items()):
         correlations[neuron_gid] = {}
         
         for signal_name, signal_data in signal_dimensions.items():
@@ -354,8 +422,13 @@ def compute_signal_dimension_correlations(
                     raise ValueError(f"Unknown correlation method: {correlation_method}")
                     
             except Exception as e:
-                warnings.warn(f"Correlation computation failed for neuron {neuron_gid}, signal {signal_name}: {e}")
+                warnings.warn(f"Rank {rank}: correlation computation failed for neuron {neuron_gid}, signal {signal_name}: {e}")
                 correlations[neuron_gid][signal_name] = 0.0
+                
+        if rank == root and (i + 1) % progress_interval == 0:
+            estimated_global = (i + 1) * size  # Rough estimate
+            progress_pct = min(100, (estimated_global / total_gids) * 100)
+            logger.info(f"Progress: ~{progress_pct:.1f}% (rank 0: {i + 1} / {local_total})")
     
     return correlations
 
@@ -365,7 +438,10 @@ def compute_feature_neuron_correlations(
     neuron_spike_dict, 
     duration_ms, 
     time_bin_ms=50.0,
-    correlation_method='pearson'
+    correlation_method='pearson',
+    comm=None,
+    root=0,
+    progress_interval=1000
 ):
     """
     Compute correlations between feature activities and neuron responses.
@@ -388,11 +464,23 @@ def compute_feature_neuron_correlations(
     dict
         {neuron_gid: {feature_gid: correlation_value}}
     """
+    if comm is None:
+        comm = MPI.COMM_WORLD
+
+    rank = comm.rank
+    size = comm.size
+
+    local_total = len(neuron_spike_dict)
+    total_gids = comm.allreduce(local_total, op=MPI.SUM)
+    
     correlations = {}
     
     # Convert spike trains to rate time series
     neuron_rates = {}
-    for neuron_gid, spike_times in tqdm(neuron_spike_dict.items(), desc="Converting spikes to rates"):
+    if rank == root:
+        logger.info("Converting spikes to rates...")
+        
+    for i, (neuron_gid, spike_times) in enumerate(neuron_spike_dict.items()):
         if len(spike_times) > 0:
             neuron_rates[neuron_gid] = compute_spike_rate_timeseries(
                 spike_times, duration_ms, time_bin_ms
@@ -401,9 +489,16 @@ def compute_feature_neuron_correlations(
             # Handle silent neurons
             n_bins = int(duration_ms / time_bin_ms)
             neuron_rates[neuron_gid] = np.zeros(n_bins)
+            
+        if rank == root and (i + 1) % progress_interval == 0:
+            estimated_global = (i + 1) * size  # Rough estimate
+            progress_pct = min(100, (estimated_global / total_gids) * 100)
+            logger.info(f"Progress: ~{progress_pct:.1f}% (rank 0: {i + 1} / {local_total})")
     
     # Compute correlations
-    for neuron_gid, neuron_rate in tqdm(neuron_rates.items(), desc="Computing correlations"):
+    if rank == root:
+        logger.info("Computing correlations...")
+    for i, (neuron_gid, neuron_rate) in enumerate(neuron_rates.items()):  # Fixed typo: enumerate
         correlations[neuron_gid] = {}
         
         for feature_gid, feature_activity in feature_activities.items():
@@ -439,6 +534,11 @@ def compute_feature_neuron_correlations(
             except Exception as e:
                 warnings.warn(f"Correlation computation failed for neuron {neuron_gid}, feature {feature_gid}: {e}")
                 correlations[neuron_gid][feature_gid] = 0.0
+                
+        if rank == root and (i + 1) % progress_interval == 0:
+            estimated_global = (i + 1) * size  # Rough estimate
+            progress_pct = min(100, (estimated_global / total_gids) * 100)
+            logger.info(f"Progress: ~{progress_pct:.1f}% (rank 0: {i + 1} / {local_total})")
     
     return correlations
 
@@ -447,7 +547,10 @@ def build_dimensional_receptive_fields(
     correlations, 
     feature_data, 
     dimensions_info, 
-    min_features_per_bin=3
+    min_features_per_bin=3,
+    comm=None,
+    root=0,
+    progress_interval=1000
 ):
     """
     Build receptive fields along each dimension from correlation data.
@@ -468,6 +571,15 @@ def build_dimensional_receptive_fields(
     dict
         {neuron_gid: {dim_name: {'bin_centers': array, 'responses': array, 'n_features': array}}}
     """
+    if comm is None:
+        comm = MPI.COMM_WORLD
+
+    rank = comm.rank
+    size = comm.size
+
+    local_total = len(correlations)
+    total_gids = comm.allreduce(local_total, op=MPI.SUM)
+    
     receptive_fields = {}
     
     # Extract feature information
@@ -481,8 +593,11 @@ def build_dimensional_receptive_fields(
             feature_positions[int(gid)] = positions[i]
     
     dim_names = list(dimensions_info.keys())
-    
-    for neuron_gid, neuron_correlations in tqdm(correlations.items(), desc="Building receptive fields"):
+
+    if rank == root:
+        logger.info("Building receptive fields...")
+        
+    for i, (neuron_gid, neuron_correlations) in enumerate(correlations.items()):
         receptive_fields[neuron_gid] = {}
         
         # Get valid features for this neuron (those with correlations)
@@ -523,11 +638,11 @@ def build_dimensional_receptive_fields(
             binned_counts = []
             bin_centers = []
             
-            for i in range(n_bins):
+            for bin_i in range(n_bins):
                 # Find features in this bin
-                mask = (np.array(dim_values) >= bin_edges[i]) & (np.array(dim_values) < bin_edges[i + 1])
-                if i == n_bins - 1:  # Include right edge in last bin
-                    mask = (np.array(dim_values) >= bin_edges[i]) & (np.array(dim_values) <= bin_edges[i + 1])
+                mask = (np.array(dim_values) >= bin_edges[bin_i]) & (np.array(dim_values) < bin_edges[bin_i + 1])
+                if bin_i == n_bins - 1:  # Include right edge in last bin
+                    mask = (np.array(dim_values) >= bin_edges[bin_i]) & (np.array(dim_values) <= bin_edges[bin_i + 1])
                 
                 bin_corrs = np.array(dim_correlations)[mask]
                 
@@ -538,7 +653,7 @@ def build_dimensional_receptive_fields(
                     binned_responses.append(0.0)
                     binned_counts.append(0)
                 
-                bin_centers.append((bin_edges[i] + bin_edges[i + 1]) / 2)
+                bin_centers.append((bin_edges[bin_i] + bin_edges[bin_i + 1]) / 2)
             
             receptive_fields[neuron_gid][dim_name] = {
                 'bin_centers': np.array(bin_centers),
@@ -546,6 +661,11 @@ def build_dimensional_receptive_fields(
                 'n_features': np.array(binned_counts),
                 'bin_edges': bin_edges
             }
+                
+        if rank == root and (i + 1) % progress_interval == 0:
+            estimated_global = (i + 1) * size  # Rough estimate
+            progress_pct = min(100, (estimated_global / total_gids) * 100)
+            logger.info(f"Progress: ~{progress_pct:.1f}% (rank 0: {i + 1} / {local_total})")
     
     return receptive_fields
 
@@ -558,7 +678,10 @@ def compute_binned_feature_correlations(
     duration_ms,
     time_bin_ms=1.0,
     correlation_method='pearson',
-    n_bins_per_dim=5
+    n_bins_per_dim=5,
+    comm=None,
+    root=0,
+    progress_interval=1000
 ):
     """
     Compute correlations with binned feature activities to reduce computational complexity.
@@ -590,6 +713,16 @@ def compute_binned_feature_correlations(
     tuple
         (correlations_dict, binned_activities_dict, bin_info_dict)
     """
+
+    if comm is None:
+        comm = MPI.COMM_WORLD
+
+    rank = comm.rank
+    size = comm.size
+
+    local_total = len(neuron_spike_dict)
+    total_gids = comm.allreduce(local_total, op=MPI.SUM)
+    
     # Extract feature information
     gids = feature_data.get('gids', [])
     positions = feature_data.get('positions', [])
@@ -608,8 +741,9 @@ def compute_binned_feature_correlations(
     
     if len(valid_features) == 0:
         return {}, {}, {}
-    
-    print(f"Binning {len(valid_features)} features across {len(dimensions_info)} dimensions...")
+
+    if rank == root:
+        logger.info(f"Binning {len(valid_features)} features across {len(dimensions_info)} dimensions...")
     
     dim_names = list(dimensions_info.keys())
     
@@ -680,7 +814,10 @@ def compute_binned_feature_correlations(
     
     # Convert spike trains to rate time series
     neuron_rates = {}
-    for neuron_gid, spike_times in tqdm(neuron_spike_dict.items(), desc="Converting spikes to rates"):
+    if rank == root:
+        logger.info("Converting spikes to rates...")
+        
+    for i, (neuron_gid, spike_times) in enumerate(neuron_spike_dict.items()):
         if len(spike_times) > 0:
             neuron_rates[neuron_gid] = compute_spike_rate_timeseries(
                 spike_times, duration_ms, time_bin_ms
@@ -688,11 +825,18 @@ def compute_binned_feature_correlations(
         else:
             n_bins = int(duration_ms / time_bin_ms)
             neuron_rates[neuron_gid] = np.zeros(n_bins)
+                
+        if rank == root and (i + 1) % progress_interval == 0:
+            estimated_global = (i + 1) * size  # Rough estimate
+            progress_pct = min(100, (estimated_global / total_gids) * 100)
+            logger.info(f"Progress: ~{progress_pct:.1f}% (rank 0: {i + 1} / {local_total})")
     
     # Compute correlations with binned activities
     correlations = {}
-    
-    for neuron_gid, neuron_rate in tqdm(neuron_rates.items(), desc="Computing binned correlations"):
+
+    if rank == root:
+        logger.info("Computing binned correlations...")
+    for i, (neuron_gid, neuron_rate) in enumerate(neuron_rates.items()):
         correlations[neuron_gid] = {}
         
         for dim_name in dim_names:
@@ -732,11 +876,20 @@ def compute_binned_feature_correlations(
                 except Exception as e:
                     warnings.warn(f"Correlation computation failed for neuron {neuron_gid}, dim {dim_name}, bin {bin_idx}: {e}")
                     correlations[neuron_gid][dim_name][bin_idx] = 0.0
+                
+        if rank == root and (i + 1) % progress_interval == 0:
+            estimated_global = (i + 1) * size  # Rough estimate
+            progress_pct = min(100, (estimated_global / total_gids) * 100)
+            logger.info(f"Progress: ~{progress_pct:.1f}% (rank 0: {i + 1} / {local_total})")
     
     return correlations, binned_activities, bin_info
 
 
-def build_binned_receptive_fields(correlations, bin_info):
+def build_binned_receptive_fields(correlations,
+                                  bin_info,
+                                  comm=None,
+                                  root=0,
+                                  progress_interval=1000):
     """
     Build receptive fields from binned correlation data.
     
@@ -752,9 +905,21 @@ def build_binned_receptive_fields(correlations, bin_info):
     dict
         {neuron_gid: {dim_name: {'bin_centers': array, 'responses': array}}}
     """
+    if comm is None:
+        comm = MPI.COMM_WORLD
+
+    rank = comm.rank
+    size = comm.size
+
+    local_total = len(correlations)  # Fixed variable name
+    total_gids = comm.allreduce(local_total, op=MPI.SUM)
+
     receptive_fields = {}
-    
-    for neuron_gid, neuron_correlations in tqdm(correlations.items(), desc="Building binned receptive fields"):
+
+    if rank == root:
+        logger.info("Building binned receptive fields...")
+        
+    for i, (neuron_gid, neuron_correlations) in enumerate(correlations.items()):
         receptive_fields[neuron_gid] = {}
         
         for dim_name, dim_correlations in neuron_correlations.items():
@@ -773,8 +938,183 @@ def build_binned_receptive_fields(correlations, bin_info):
                     'n_bins': n_bins,
                     'bin_edges': bin_info[dim_name]['bin_edges']
                 }
+        if rank == root and (i + 1) % progress_interval == 0:
+            estimated_global = (i + 1) * size  # Rough estimate
+            progress_pct = min(100, (estimated_global / total_gids) * 100)
+            logger.info(f"Progress: ~{progress_pct:.1f}% (rank 0: {i + 1} / {local_total})")
     
     return receptive_fields
+
+def build_signal_dimension_receptive_fields(correlations,
+                                            comm=None,
+                                            root=0,
+                                            progress_interval=1000):
+
+    if comm is None:
+        comm = MPI.COMM_WORLD
+
+    rank = comm.rank
+    size = comm.size
+
+    local_total = len(correlations)  # Fixed variable name
+    total_gids = comm.allreduce(local_total, op=MPI.SUM)
+
+    receptive_fields = {}
+
+    if rank == root:
+        logger.info("Building signal_dimension receptive fields...")
+
+    receptive_fields = {}
+    for i, (neuron_gid, neuron_correlations) in enumerate(correlations.items()):
+        
+        receptive_fields[neuron_gid] = {}
+
+        # Group correlations by signal type
+        for signal_name, correlation in neuron_correlations.items():
+            if 'channel_' in signal_name and not any(x in signal_name for x in ['derivative', 'band']):
+                # Raw channel responses
+                if 'raw_channels' not in receptive_fields[neuron_gid]:
+                    receptive_fields[neuron_gid]['raw_channels'] = {
+                        'signal_names': [],
+                        'responses': []
+                    }
+                receptive_fields[neuron_gid]['raw_channels']['signal_names'].append(signal_name)
+                receptive_fields[neuron_gid]['raw_channels']['responses'].append(correlation)
+
+            elif 'band_' in signal_name:
+                # Frequency band responses
+                if 'frequency_bands' not in receptive_fields[neuron_gid]:
+                    receptive_fields[neuron_gid]['frequency_bands'] = {
+                        'signal_names': [],
+                        'responses': []
+                    }
+                receptive_fields[neuron_gid]['frequency_bands']['signal_names'].append(signal_name)
+                receptive_fields[neuron_gid]['frequency_bands']['responses'].append(correlation)
+
+            elif 'derivative' in signal_name:
+                # Temporal derivative responses
+                if 'temporal_derivatives' not in receptive_fields[neuron_gid]:
+                    receptive_fields[neuron_gid]['temporal_derivatives'] = {
+                        'signal_names': [],
+                        'responses': []
+                    }
+                receptive_fields[neuron_gid]['temporal_derivatives']['signal_names'].append(signal_name)
+                receptive_fields[neuron_gid]['temporal_derivatives']['responses'].append(correlation)
+                
+        if rank == root and (i + 1) % progress_interval == 0:
+            estimated_global = (i + 1) * size  # Rough estimate
+            progress_pct = min(100, (estimated_global / total_gids) * 100)
+            logger.info(f"Progress: ~{progress_pct:.1f}% (rank 0: {i + 1} / {local_total})")
+
+    return receptive_fields
+                
+                
+def aggregate_processed_responses(processed_responses, comm=None, root=0):
+    """
+    Aggregate processed responses from all MPI ranks to the root rank.
+    
+    Parameters:
+    -----------
+    processed_responses : dict
+        Local processed responses on each rank
+    comm : MPI communicator
+        MPI communicator object
+    root : int
+        Root rank to gather results to
+        
+    Returns:
+    --------
+    dict or None
+        Combined processed responses (only available on root rank)
+    """
+    if comm is None:
+        comm = MPI.COMM_WORLD
+        
+    rank = comm.rank
+    
+    if rank == root:
+        logger.info("Aggregating results from all ranks...")
+    
+    # Gather all processed responses to root
+    all_responses = comm.gather(processed_responses, root=root)
+    
+    if rank == root:
+        # Combine responses from all ranks
+        combined_responses = {}
+        
+        for rank_responses in all_responses:
+            for pop_name, pop_data in rank_responses.items():
+                if pop_name not in combined_responses:
+                    combined_responses[pop_name] = {
+                        'input_metadata': pop_data['input_metadata'],
+                        'population_metrics': pop_data['population_metrics'].copy(),
+                        'cell_metrics': {},
+                        'feature_activities': pop_data.get('feature_activities', {}),
+                    }
+                    
+                    # Copy optional fields if present
+                    if 'binned_activities' in pop_data:
+                        combined_responses[pop_name]['binned_activities'] = pop_data['binned_activities']
+                    if 'bin_info' in pop_data:
+                        combined_responses[pop_name]['bin_info'] = pop_data['bin_info']
+                
+                # Merge cell metrics
+                combined_responses[pop_name]['cell_metrics'].update(pop_data['cell_metrics'])
+                
+                # Update population-level metrics
+                if 'all_spikes' in pop_data['population_metrics']:
+                    if 'all_spikes' not in combined_responses[pop_name]['population_metrics']:
+                        combined_responses[pop_name]['population_metrics']['all_spikes'] = []
+                    combined_responses[pop_name]['population_metrics']['all_spikes'] = np.concatenate([
+                        combined_responses[pop_name]['population_metrics']['all_spikes'],
+                        pop_data['population_metrics']['all_spikes']
+                    ])
+                
+                # Recalculate population rate with combined data
+                all_spikes = combined_responses[pop_name]['population_metrics']['all_spikes']
+                
+                # Get simulation duration from somewhere in the data
+                # This should be consistent across ranks
+                simulation_duration = None
+                for cell_data in pop_data['cell_metrics'].values():
+                    if 'spike_times' in cell_data and len(cell_data['spike_times']) > 0:
+                        simulation_duration = max(cell_data['spike_times'])
+                        break
+                
+                if simulation_duration is None:
+                    # Fallback: estimate from existing population rate data
+                    bin_edges = pop_data['population_metrics'].get('bin_edges', [])
+                    if len(bin_edges) > 0:
+                        simulation_duration = bin_edges[-1]
+                
+                if simulation_duration is not None:
+                    bin_size = 10  # ms (should match _build_population_response_dict)
+                    n_bins = int(simulation_duration / bin_size)
+                    pop_rate, pop_bin_edges = np.histogram(
+                        all_spikes, bins=n_bins, range=(0, simulation_duration)
+                    )
+                    
+                    n_cells = len(combined_responses[pop_name]['cell_metrics'])
+                    if n_cells > 0:
+                        pop_rate = pop_rate / (bin_size/1000) / n_cells
+                    
+                    combined_responses[pop_name]['population_metrics']['population_rate'] = pop_rate
+                    combined_responses[pop_name]['population_metrics']['bin_edges'] = pop_bin_edges
+                    combined_responses[pop_name]['population_metrics']['mean_rate'] = np.mean(pop_rate) if len(pop_rate) > 0 else 0
+                
+                # Update cell counts
+                combined_responses[pop_name]['population_metrics']['total_cells'] = len(combined_responses[pop_name]['cell_metrics'])
+                combined_responses[pop_name]['population_metrics']['n_active_cells'] = sum(
+                    1 for metrics in combined_responses[pop_name]['cell_metrics'].values() 
+                    if metrics['n_spikes'] > 0
+                )
+                
+        logger.info(f"Aggregation complete. Combined {len(combined_responses)} populations with "
+                    f"{sum(len(pop['cell_metrics']) for pop in combined_responses.values())} total cells")
+        
+        return combined_responses
+    else:
+        return None
 
 
 def process_model_spatiotemporal_responses(
@@ -796,6 +1136,9 @@ def process_model_spatiotemporal_responses(
     include_derivatives=True,
     include_frequency_bands=True,
     frequency_bands=[(1, 4), (4, 8), (8, 15), (15, 30), (30, 100)],
+    comm=None,
+    root=0,
+    aggregate_results=True,  # Whether to aggregate results to root rank
     **kwargs
 ):
     """
@@ -836,11 +1179,19 @@ def process_model_spatiotemporal_responses(
         Whether to include frequency band decompositions
     frequency_bands : List[Tuple[float, float]]
         Frequency bands to extract for signal dimension analysis
+    comm : mpi4py communicator object, optional
+        MPI communicator for distributed operation
+    root : int
+        Root MPI rank where results will be aggregated (default 0)
+    aggregate_results : bool
+        Whether to aggregate results from all ranks to root rank (default True)
         
     Returns:
     --------
-    dict
-        Processed responses with correlation-based receptive fields
+    dict or None
+        Processed responses with correlation-based receptive fields.
+        If aggregate_results is True, only root rank gets the full combined results,
+        other ranks get None. If aggregate_results is False, each rank gets its local results.
         
     Note:
     ----
@@ -849,9 +1200,20 @@ def process_model_spatiotemporal_responses(
     - Binned features: O(N_neurons × N_bins_per_dim × N_dimensions × N_timebins) - balanced
     - Signal dimensions: O(N_neurons × N_signal_dims × N_timebins) - fastest
     """
+
+    if comm is None:
+        comm = MPI.COMM_WORLD
+
+    rank = comm.rank
+    size = comm.size
+
+    if rank == root:
+        logger.setLevel(logging.INFO)
+    else:
+        logger.setLevel(logging.WARNING)
     
-    (population_ranges, N) = read_population_ranges(model_output_path)
-    population_names = read_population_names(model_output_path)
+    (population_ranges, N) = read_population_ranges(model_output_path, comm=comm)
+    population_names = read_population_names(model_output_path, comm=comm)
     
     if populations is None:
         include = list(population_names)
@@ -868,6 +1230,8 @@ def process_model_spatiotemporal_responses(
         include_artificial=include_artificial,
         spike_train_attr_name=time_variable,
         time_range=time_range,
+        comm=comm,
+        io_size=1
     )
     
     spkpoplst = spkdata["spkpoplst"]
@@ -883,44 +1247,56 @@ def process_model_spatiotemporal_responses(
     }
     
     # Load input signal and features
-    with h5py.File(input_features_path, 'r') as f:
-        signal_group = f[f'Signals/{input_signal_id}']
-        
-        if 'data' in signal_group:
-            input_signal = signal_group['data'][:]
-        elif 'stimulus' in signal_group:
-            input_signal = signal_group['stimulus'][:]
-        else:
-            raise RuntimeError(f"Unable to find signal data in group {signal_group}")
-        
-        dimensions = signal_group['dimensions'][:]
-        
-        dim_info = {}
-        for dim in dimensions:
-            name = dim['name'].decode('utf-8') if isinstance(dim['name'], bytes) else dim['name']
-            dim_info[name] = {
-                'range': (dim['range_min'], dim['range_max']),
-                'scale': dim['scale'].decode('utf-8') if isinstance(dim['scale'], bytes) else dim['scale'],
-                'priority': dim['priority']
-            }
-        
-        feature_data = {}
-        if 'feature_data' in signal_group:
-            feature_group = signal_group['feature_data']
-            for key in feature_group.keys():
-                feature_data[key] = feature_group[key][:]
-        
-        duration = signal_group.attrs.get('duration', 10.0)
-        sample_rate = signal_group.attrs.get('sample_rate', 1000)
-        n_channels = signal_group.attrs.get('n_channels', 
-                                           input_signal.shape[1] if len(input_signal.shape) > 1 else 1)
+    input_signal = None
+    dim_info = None
+    (duration, sample_rate, n_channels) = None, None, None
+    feature_data = None
+    
+    if rank == root:
+        with h5py.File(input_features_path, 'r') as f:
+            signal_group = f[f'Signals/{input_signal_id}']
+
+            if 'data' in signal_group:
+                input_signal = signal_group['data'][:]
+            elif 'stimulus' in signal_group:
+                input_signal = signal_group['stimulus'][:]
+            else:
+                raise RuntimeError(f"Unable to find signal data in group {signal_group}")
+
+            dimensions = signal_group['dimensions'][:]
+
+            dim_info = {}
+            for dim in dimensions:
+                name = dim['name'].decode('utf-8') if isinstance(dim['name'], bytes) else dim['name']
+                dim_info[name] = {
+                    'range': (dim['range_min'], dim['range_max']),
+                    'scale': dim['scale'].decode('utf-8') if isinstance(dim['scale'], bytes) else dim['scale'],
+                    'priority': dim['priority']
+                }
+
+            feature_data = {}
+            if 'feature_data' in signal_group:
+                feature_group = signal_group['feature_data']
+                for key in feature_group.keys():
+                    feature_data[key] = feature_group[key][:]
+
+            duration = signal_group.attrs.get('duration', 10.0)
+            sample_rate = signal_group.attrs.get('sample_rate', 1000)
+            n_channels = signal_group.attrs.get('n_channels', 
+                                               input_signal.shape[1] if len(input_signal.shape) > 1 else 1)
+
+    comm.barrier()
+    input_signal = comm.bcast(input_signal, root=root)
+    dim_info = comm.bcast(dim_info, root=root)
+    (duration, sample_rate, n_channels) = comm.bcast((duration, sample_rate, n_channels), root=root)
     
     # Choose correlation approach based on parameters
     if use_signal_dimensions and use_binned_features:
         raise ValueError("Cannot use both use_signal_dimensions and use_binned_features simultaneously")
     
     if use_signal_dimensions:
-        print("Using fast signal dimension correlation approach...")
+        if rank == root:
+            logger.info("Using fast signal dimension correlation approach...")
         feature_activities = None  # Not needed for signal dimension approach
         
         # Process each population
@@ -929,24 +1305,30 @@ def process_model_spatiotemporal_responses(
         for pop_name in include:
             if pop_name not in pop_spk_dict:
                 continue
-            
-            print(f"Processing population: {pop_name}")
+
+            if rank == root:
+                logger.info(f"Processing population: {pop_name}")
             
             pop_spkinds, pop_spkts = pop_spk_dict[pop_name]
             gid_spike_dict = spikedata.make_spike_dict(pop_spkinds, pop_spkts)
             
             # Sample neurons if requested
-            if max_gids is not None and len(gid_spike_dict) > max_gids:
+            local_max_gids = None
+            if max_gids is not None:
+                local_max_gids = max_gids // size
+            if local_max_gids is not None and len(gid_spike_dict) > local_max_gids:
                 if sample_seed is not None:
-                    np.random.seed(sample_seed)
+                    np.random.seed(sample_seed + rank)  # Different seed per rank
                 sampled_gids = np.random.choice(
                     list(gid_spike_dict.keys()), 
-                    size=max_gids, 
+                    size=local_max_gids, 
                     replace=False
                 )
                 gid_spike_dict = {gid: gid_spike_dict[gid] for gid in sampled_gids}
-            
-            print("Computing signal dimension correlations...")
+
+            if rank == root:
+                logger.info("Computing signal dimension correlations...")
+                
             correlations = compute_signal_dimension_correlations(
                 input_signal,
                 gid_spike_dict,
@@ -956,60 +1338,38 @@ def process_model_spatiotemporal_responses(
                 correlation_method,
                 include_derivatives,
                 include_frequency_bands,
-                frequency_bands
+                frequency_bands,
+                comm=comm,
+                root=root
             )
             
             # Build simple "receptive fields" based on signal dimensions
-            print("Building signal dimension receptive fields...")
-            receptive_fields = {}
-            for neuron_gid, neuron_correlations in correlations.items():
-                receptive_fields[neuron_gid] = {}
-                
-                # Group correlations by signal type
-                for signal_name, correlation in neuron_correlations.items():
-                    if 'channel_' in signal_name and not any(x in signal_name for x in ['derivative', 'band']):
-                        # Raw channel responses
-                        if 'raw_channels' not in receptive_fields[neuron_gid]:
-                            receptive_fields[neuron_gid]['raw_channels'] = {
-                                'signal_names': [],
-                                'responses': []
-                            }
-                        receptive_fields[neuron_gid]['raw_channels']['signal_names'].append(signal_name)
-                        receptive_fields[neuron_gid]['raw_channels']['responses'].append(correlation)
-                    
-                    elif 'band_' in signal_name:
-                        # Frequency band responses
-                        if 'frequency_bands' not in receptive_fields[neuron_gid]:
-                            receptive_fields[neuron_gid]['frequency_bands'] = {
-                                'signal_names': [],
-                                'responses': []
-                            }
-                        receptive_fields[neuron_gid]['frequency_bands']['signal_names'].append(signal_name)
-                        receptive_fields[neuron_gid]['frequency_bands']['responses'].append(correlation)
-                    
-                    elif 'derivative' in signal_name:
-                        # Temporal derivative responses
-                        if 'temporal_derivatives' not in receptive_fields[neuron_gid]:
-                            receptive_fields[neuron_gid]['temporal_derivatives'] = {
-                                'signal_names': [],
-                                'responses': []
-                            }
-                        receptive_fields[neuron_gid]['temporal_derivatives']['signal_names'].append(signal_name)
-                        receptive_fields[neuron_gid]['temporal_derivatives']['responses'].append(correlation)
+            if rank == root:
+                logger.info("Building signal dimension receptive fields...")
+
+            receptive_fields = build_signal_dimension_receptive_fields(correlations,
+                                                                       comm=comm,
+                                                                       root=root)
             
             # Store processed data for this population
             processed_responses[pop_name] = _build_population_response_dict(
                 gid_spike_dict, pop_spkts, simulation_duration, correlations, 
                 receptive_fields, input_signal, dim_info, feature_data, 
                 duration, sample_rate, n_channels, correlation_method, time_bin_ms,
-                feature_activities
+                feature_activities, comm=comm, root=root
             )
     
     elif use_binned_features:
-        print("Using binned feature correlation approach...")
-        print("Computing feature activity time series...")
+        if rank == root:
+            logger.info("Using binned feature correlation approach...")
+            logger.info("Computing feature activity time series...")
+
+        # Distribute read-only data to all ranks
+        feature_data = comm.bcast(feature_data, root=root)
+
         feature_activities = compute_feature_activity_timeseries(
-            input_signal, feature_data, dim_info, sample_rate, time_bin_ms
+            input_signal, feature_data, dim_info, sample_rate, time_bin_ms,
+            comm=comm, root=root
         )
         
         processed_responses = {}
@@ -1017,24 +1377,29 @@ def process_model_spatiotemporal_responses(
         for pop_name in include:
             if pop_name not in pop_spk_dict:
                 continue
-            
-            print(f"Processing population: {pop_name}")
+
+            if rank == root:
+                logger.info(f"Processing population: {pop_name}")
             
             pop_spkinds, pop_spkts = pop_spk_dict[pop_name]
             gid_spike_dict = spikedata.make_spike_dict(pop_spkinds, pop_spkts)
             
             # Sample neurons if requested
-            if max_gids is not None and len(gid_spike_dict) > max_gids:
+            local_max_gids = None
+            if max_gids is not None:
+                local_max_gids = max_gids // size
+            if local_max_gids is not None and len(gid_spike_dict) > local_max_gids:
                 if sample_seed is not None:
-                    np.random.seed(sample_seed)
+                    np.random.seed(sample_seed + rank)  # Different seed per rank
                 sampled_gids = np.random.choice(
                     list(gid_spike_dict.keys()), 
-                    size=max_gids, 
+                    size=local_max_gids, 
                     replace=False
                 )
                 gid_spike_dict = {gid: gid_spike_dict[gid] for gid in sampled_gids}
-            
-            print("Computing binned feature correlations...")
+
+            if rank == root:
+                logger.info("Computing binned feature correlations...")
             correlations, binned_activities, bin_info = compute_binned_feature_correlations(
                 feature_activities,
                 feature_data,
@@ -1043,11 +1408,15 @@ def process_model_spatiotemporal_responses(
                 simulation_duration,
                 time_bin_ms,
                 correlation_method,
-                n_bins_per_dim
+                n_bins_per_dim,
+                comm=comm,
+                root=root
             )
-            
-            print("Building binned receptive fields...")
-            receptive_fields = build_binned_receptive_fields(correlations, bin_info)
+
+            if rank == root:
+                logger.info("Building binned receptive fields...")
+            receptive_fields = build_binned_receptive_fields(correlations, bin_info,
+                                                             comm=comm, root=root)
             
             # Store processed data for this population (need to flatten correlations for compatibility)
             flattened_correlations = {}
@@ -1062,7 +1431,7 @@ def process_model_spatiotemporal_responses(
                 gid_spike_dict, pop_spkts, simulation_duration, flattened_correlations, 
                 receptive_fields, input_signal, dim_info, feature_data, 
                 duration, sample_rate, n_channels, correlation_method, time_bin_ms,
-                feature_activities
+                feature_activities, comm=comm, root=root
             )
             
             # Add binned activity info to the response
@@ -1070,10 +1439,16 @@ def process_model_spatiotemporal_responses(
             processed_responses[pop_name]['bin_info'] = bin_info
         
     else:
-        print("Using detailed feature-based correlation approach...")
-        print("Computing feature activity time series...")
+        if rank == root:
+            logger.info("Using detailed feature-based correlation approach...")
+            logger.info("Computing feature activity time series...")
+            
+        # Distribute read-only data to all ranks
+        feature_data = comm.bcast(feature_data, root=root)
+        
         feature_activities = compute_feature_activity_timeseries(
-            input_signal, feature_data, dim_info, sample_rate, time_bin_ms
+            input_signal, feature_data, dim_info, sample_rate, time_bin_ms,
+            comm=comm, root=root
         )
         
         processed_responses = {}
@@ -1081,37 +1456,49 @@ def process_model_spatiotemporal_responses(
         for pop_name in include:
             if pop_name not in pop_spk_dict:
                 continue
-            
-            print(f"Processing population: {pop_name}")
+
+            if rank == root:
+                logger.info(f"Processing population: {pop_name}")
             
             pop_spkinds, pop_spkts = pop_spk_dict[pop_name]
             gid_spike_dict = spikedata.make_spike_dict(pop_spkinds, pop_spkts)
             
             # Sample neurons if requested
-            if max_gids is not None and len(gid_spike_dict) > max_gids:
+            local_max_gids = None
+            if max_gids is not None:
+                local_max_gids = max_gids // size
+            if local_max_gids is not None and len(gid_spike_dict) > local_max_gids:
                 if sample_seed is not None:
-                    np.random.seed(sample_seed)
+                    np.random.seed(sample_seed + rank)  # Different seed per rank
                 sampled_gids = np.random.choice(
                     list(gid_spike_dict.keys()), 
-                    size=max_gids, 
+                    size=local_max_gids, 
                     replace=False
                 )
                 gid_spike_dict = {gid: gid_spike_dict[gid] for gid in sampled_gids}
-            
-            print("Computing feature-neuron correlations...")
+
+            if rank == root:
+                logger.info("Computing feature-neuron correlations...")
+                
             correlations = compute_feature_neuron_correlations(
                 feature_activities, 
                 gid_spike_dict, 
                 simulation_duration, 
                 time_bin_ms,
-                correlation_method
+                correlation_method,
+                comm=comm,
+                root=root
             )
-            
-            print("Building dimensional receptive fields...")
+
+            if rank == root:
+                logger.info("Building dimensional receptive fields...")
+                
             receptive_fields = build_dimensional_receptive_fields(
                 correlations, 
                 feature_data, 
-                dim_info
+                dim_info,
+                comm=comm, 
+                root=root
             )
             
             # Store processed data for this population
@@ -1119,11 +1506,18 @@ def process_model_spatiotemporal_responses(
                 gid_spike_dict, pop_spkts, simulation_duration, correlations, 
                 receptive_fields, input_signal, dim_info, feature_data, 
                 duration, sample_rate, n_channels, correlation_method, time_bin_ms,
-                feature_activities
+                feature_activities, comm=comm, root=root
             )
     
-    if len(processed_responses) == 1:
-        return next(iter(processed_responses.values()))
+    # Aggregate results if requested
+    if aggregate_results:
+        processed_responses = aggregate_processed_responses(processed_responses, comm=comm, root=root)
+    
+    # Return results based on aggregation choice
+    if len(processed_responses) == 1 and not aggregate_results:
+        return next(iter(processed_responses.values())) if processed_responses else None
+    elif len(processed_responses) == 1 and aggregate_results and rank == root:
+        return next(iter(processed_responses.values())) if processed_responses else None
     else:
         return processed_responses
 
@@ -1132,13 +1526,20 @@ def _build_population_response_dict(
     gid_spike_dict, pop_spkts, simulation_duration, correlations, 
     receptive_fields, input_signal, dim_info, feature_data, 
     duration, sample_rate, n_channels, correlation_method, time_bin_ms,
-    feature_activities
+    feature_activities, comm=None, root=0, progress_interval=1000
 ):
     """Helper function to build the population response dictionary."""
     
+    if comm is None:
+        comm = MPI.COMM_WORLD
+    
+    rank = comm.rank
+    
     # Compute basic cell metrics
     cell_metrics = {}
-    for gid, spike_times in gid_spike_dict.items():
+    local_total = len(gid_spike_dict)
+    
+    for i, (gid, spike_times) in enumerate(gid_spike_dict.items()):
         spike_times = np.array(spike_times)
         n_spikes = len(spike_times)
         firing_rate = n_spikes / (simulation_duration / 1000)
@@ -1164,7 +1565,10 @@ def _build_population_response_dict(
             'max_correlation': max(correlations.get(gid, {}).values()) if correlations.get(gid) else 0,
             'mean_correlation': np.mean(list(correlations.get(gid, {}).values())) if correlations.get(gid) else 0,
         }
-    
+
+        if rank == root and (i + 1) % progress_interval == 0:
+            logger.info(f"Progress: rank 0: {i + 1} / {local_total}")
+
     # Population-level metrics
     all_spikes = np.array(sorted(pop_spkts))
     bin_size = 10  # ms

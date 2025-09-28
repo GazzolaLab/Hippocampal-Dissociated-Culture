@@ -1041,6 +1041,9 @@ def aggregate_processed_responses(processed_responses, comm=None, root=0):
     if rank == root:
         # Combine responses from all ranks
         combined_responses = {}
+
+        # First pass: collect all spike arrays per population
+        population_spike_arrays = {}
         
         for rank_responses in all_responses:
             for pop_name, pop_data in rank_responses.items():
@@ -1057,64 +1060,94 @@ def aggregate_processed_responses(processed_responses, comm=None, root=0):
                         combined_responses[pop_name]['binned_activities'] = pop_data['binned_activities']
                     if 'bin_info' in pop_data:
                         combined_responses[pop_name]['bin_info'] = pop_data['bin_info']
+                    
+                    # Initialize spike collection for this population
+                    population_spike_arrays[pop_name] = []
                 
                 # Merge cell metrics
                 combined_responses[pop_name]['cell_metrics'].update(pop_data['cell_metrics'])
                 
-                # Update population-level metrics
+                # Collect spike arrays for later concatenation
                 if 'all_spikes' in pop_data['population_metrics']:
-                    if 'all_spikes' not in combined_responses[pop_name]['population_metrics']:
-                        combined_responses[pop_name]['population_metrics']['all_spikes'] = []
-                    combined_responses[pop_name]['population_metrics']['all_spikes'] = np.concatenate([
-                        combined_responses[pop_name]['population_metrics']['all_spikes'],
-                        pop_data['population_metrics']['all_spikes']
-                    ])
-                
-                # Recalculate population rate with combined data
-                all_spikes = combined_responses[pop_name]['population_metrics']['all_spikes']
-                
-                # Get simulation duration from somewhere in the data
-                # This should be consistent across ranks
-                simulation_duration = None
-                for cell_data in pop_data['cell_metrics'].values():
-                    if 'spike_times' in cell_data and len(cell_data['spike_times']) > 0:
-                        simulation_duration = max(cell_data['spike_times'])
-                        break
-                
-                if simulation_duration is None:
-                    # Fallback: estimate from existing population rate data
-                    bin_edges = pop_data['population_metrics'].get('bin_edges', [])
-                    if len(bin_edges) > 0:
-                        simulation_duration = bin_edges[-1]
-                
-                if simulation_duration is not None:
-                    bin_size = 10  # ms (should match _build_population_response_dict)
-                    n_bins = int(simulation_duration / bin_size)
-                    pop_rate, pop_bin_edges = np.histogram(
-                        all_spikes, bins=n_bins, range=(0, simulation_duration)
-                    )
-                    
-                    n_cells = len(combined_responses[pop_name]['cell_metrics'])
-                    if n_cells > 0:
-                        pop_rate = pop_rate / (bin_size/1000) / n_cells
-                    
-                    combined_responses[pop_name]['population_metrics']['population_rate'] = pop_rate
-                    combined_responses[pop_name]['population_metrics']['bin_edges'] = pop_bin_edges
-                    combined_responses[pop_name]['population_metrics']['mean_rate'] = np.mean(pop_rate) if len(pop_rate) > 0 else 0
-                
-                # Update cell counts
-                combined_responses[pop_name]['population_metrics']['total_cells'] = len(combined_responses[pop_name]['cell_metrics'])
-                combined_responses[pop_name]['population_metrics']['n_active_cells'] = sum(
-                    1 for metrics in combined_responses[pop_name]['cell_metrics'].values() 
-                    if metrics['n_spikes'] > 0
+                    spikes = pop_data['population_metrics']['all_spikes']
+                    # Ensure it's a 1D array
+                    spikes = np.asarray(spikes).flatten()
+                    if len(spikes) > 0:  # Only add non-empty arrays
+                        population_spike_arrays[pop_name].append(spikes)
+        
+        # Second pass: concatenate all spike arrays and recalculate population metrics
+        for pop_name in combined_responses.keys():
+            # Concatenate all spike arrays for this population
+            if pop_name in population_spike_arrays and len(population_spike_arrays[pop_name]) > 0:
+                all_spikes = np.concatenate(population_spike_arrays[pop_name])
+                # Sort the combined spikes
+                all_spikes = np.sort(all_spikes)
+                combined_responses[pop_name]['population_metrics']['all_spikes'] = all_spikes
+            else:
+                # No spikes found for this population
+                combined_responses[pop_name]['population_metrics']['all_spikes'] = np.array([])
+                all_spikes = np.array([])
+            
+            # Get simulation duration for population rate calculation
+            simulation_duration = None
+            
+            # Try to get duration from cell data
+            for cell_data in combined_responses[pop_name]['cell_metrics'].values():
+                if 'spike_times' in cell_data and len(cell_data['spike_times']) > 0:
+                    max_spike_time = np.max(cell_data['spike_times'])
+                    if simulation_duration is None or max_spike_time > simulation_duration:
+                        simulation_duration = max_spike_time
+            
+            # Fallback: use existing bin edges
+            if simulation_duration is None:
+                bin_edges = combined_responses[pop_name]['population_metrics'].get('bin_edges', [])
+                if len(bin_edges) > 0:
+                    simulation_duration = bin_edges[-1]
+            
+            # Final fallback: estimate from spike data
+            if simulation_duration is None and len(all_spikes) > 0:
+                simulation_duration = np.max(all_spikes)
+            
+            # Default if no spikes at all
+            if simulation_duration is None:
+                simulation_duration = 1000.0  # 1 second default
+            
+            # Recalculate population rate with combined data
+            if len(all_spikes) > 0:
+                bin_size = 10  # ms (should match _build_population_response_dict)
+                n_bins = int(simulation_duration / bin_size)
+                pop_rate, pop_bin_edges = np.histogram(
+                    all_spikes, bins=n_bins, range=(0, simulation_duration)
                 )
                 
+                n_cells = len(combined_responses[pop_name]['cell_metrics'])
+                if n_cells > 0:
+                    pop_rate = pop_rate / (bin_size/1000) / n_cells
+                
+                combined_responses[pop_name]['population_metrics']['population_rate'] = pop_rate
+                combined_responses[pop_name]['population_metrics']['bin_edges'] = pop_bin_edges
+                combined_responses[pop_name]['population_metrics']['mean_rate'] = np.mean(pop_rate)
+            else:
+                # No spikes - create empty rate arrays
+                bin_size = 10
+                n_bins = int(simulation_duration / bin_size)
+                combined_responses[pop_name]['population_metrics']['population_rate'] = np.zeros(n_bins)
+                combined_responses[pop_name]['population_metrics']['bin_edges'] = np.linspace(0, simulation_duration, n_bins + 1)
+                combined_responses[pop_name]['population_metrics']['mean_rate'] = 0.0
+                
+            # Update cell counts
+            combined_responses[pop_name]['population_metrics']['total_cells'] = len(combined_responses[pop_name]['cell_metrics'])
+            combined_responses[pop_name]['population_metrics']['n_active_cells'] = sum(
+                1 for metrics in combined_responses[pop_name]['cell_metrics'].values() 
+                if metrics['n_spikes'] > 0
+            )
+        
         logger.info(f"Aggregation complete. Combined {len(combined_responses)} populations with "
-                    f"{sum(len(pop['cell_metrics']) for pop in combined_responses.values())} total cells")
+                   f"{sum(len(pop['cell_metrics']) for pop in combined_responses.values())} total cells")
         
         return combined_responses
     else:
-        return None
+        return None        
 
 
 def process_model_spatiotemporal_responses(
@@ -1129,6 +1162,7 @@ def process_model_spatiotemporal_responses(
     time_bin_ms=50.0,
     correlation_method='pearson',
     max_gids=None,
+    max_features=None,
     sample_seed=None,
     use_signal_dimensions=False,  # Fast signal correlation mode
     use_binned_features=False,    # Binned feature correlation mode
@@ -1165,6 +1199,8 @@ def process_model_spatiotemporal_responses(
         'pearson', 'spearman', or 'mutual_info'
     max_gids : int, optional
         Maximum number of neurons to analyze (for computational efficiency)
+    max_features : int, optional
+        Maximum number of features to use in analysis (for computational efficiency)
     sample_seed : int, optional
         Random seed for neuron sampling
     use_signal_dimensions : bool
@@ -1284,6 +1320,20 @@ def process_model_spatiotemporal_responses(
             sample_rate = signal_group.attrs.get('sample_rate', 1000)
             n_channels = signal_group.attrs.get('n_channels', 
                                                input_signal.shape[1] if len(input_signal.shape) > 1 else 1)
+
+        if max_features is not None:
+            feature_gids = feature_data.get('gids', [])
+            feature_positions = feature_data.get('positions', [])
+            sampled_feature_idxs = np.random.choice(
+                    np.arange(0, len(feature_gids)),
+                    size=max_features, 
+                    replace=False
+                )
+            feature_gids = feature_gids[sampled_feature_idxs]
+            feature_positions = feature_positions[sampled_feature_idxs]
+            feature_data['gids'] = feature_gids
+            feature_data['positions'] = feature_positions
+            
 
     comm.barrier()
     input_signal = comm.bcast(input_signal, root=root)
@@ -1513,13 +1563,7 @@ def process_model_spatiotemporal_responses(
     if aggregate_results:
         processed_responses = aggregate_processed_responses(processed_responses, comm=comm, root=root)
     
-    # Return results based on aggregation choice
-    if len(processed_responses) == 1 and not aggregate_results:
-        return next(iter(processed_responses.values())) if processed_responses else None
-    elif len(processed_responses) == 1 and aggregate_results and rank == root:
-        return next(iter(processed_responses.values())) if processed_responses else None
-    else:
-        return processed_responses
+    return processed_responses
 
 
 def _build_population_response_dict(

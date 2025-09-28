@@ -33,6 +33,7 @@ def analyze_spatiotemporal_responses(model_output_path,
                                                'response_examples',
                                                'dynamic_responses'],
                                      max_gids=None,
+                                     max_features=None,
                                      sample_seed=None,
                                      comm=None,
                                      root=0):
@@ -74,7 +75,7 @@ def analyze_spatiotemporal_responses(model_output_path,
     rank = comm.rank
     size = comm.size
 
-    processed_data = process_model_spatiotemporal_responses(
+    population_processed_data = process_model_spatiotemporal_responses(
         model_output_path = model_output_path,
         model_output_namespace_id = model_output_namespace_id,
         input_features_path = input_features_path,
@@ -92,6 +93,7 @@ def analyze_spatiotemporal_responses(model_output_path,
         include_frequency_bands=include_frequency_bands,
         frequency_bands=frequency_bands,
         max_gids=max_gids,
+        max_features=max_features,
         sample_seed=sample_seed,
         comm=comm,
         root=root
@@ -100,6 +102,8 @@ def analyze_spatiotemporal_responses(model_output_path,
     # analyses=['tuning_curves', 'sensitivity_analysis', 'response_examples', 'dynamic_responses']
 
     if rank == root:
+        
+        processed_data = next(iter(population_processed_data.values()))
         
         fig1 = plot_feature_activities(
             processed_data['feature_activities'],
@@ -140,7 +144,8 @@ if __name__ == "__main__":
         use_binned_features=True,
 #        analyses=['tuning_curves'],
 #        analyses=['tuning_curves', 'sensitivity_analysis', 'response_examples', 'dynamic_responses'],
-        max_gids=1000,
+        max_gids=50000,
+        max_features=10000,
         sample_seed=67
     )
     

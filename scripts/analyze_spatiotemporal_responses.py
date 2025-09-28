@@ -1141,7 +1141,42 @@ def aggregate_processed_responses(processed_responses, comm=None, root=0):
                 1 for metrics in combined_responses[pop_name]['cell_metrics'].values() 
                 if metrics['n_spikes'] > 0
             )
-        
+
+
+        # Handle MFDFA analysis aggregation if present
+        for pop_name, pop_data in combined_responses.items():
+            # Check if any cells have MFDFA analysis
+            has_mfdfa = any(
+                'mfdfa_analysis' in cell_data 
+                for cell_data in pop_data['cell_metrics'].values()
+            )
+
+            if has_mfdfa:
+                # Collect all MFDFA results for recomputation of population summary
+                all_mfdfa_results = {}
+                analysis_types = set()
+
+                for gid, cell_data in pop_data['cell_metrics'].items():
+                    if 'mfdfa_analysis' in cell_data:
+                        all_mfdfa_results[gid] = cell_data['mfdfa_analysis']
+                        analysis_types.update(cell_data['mfdfa_analysis'].keys())
+
+                if len(all_mfdfa_results) > 0:
+                    # Import the MFDFA summary function
+                    from mfdfa_analysis import compute_population_mfdfa_summary
+
+                    # Recompute population MFDFA summary with complete dataset
+                    mfdfa_summary = compute_population_mfdfa_summary(
+                        all_mfdfa_results, 
+                        list(analysis_types)
+                    )
+
+                    # Update population metrics
+                    pop_data['population_metrics']['mfdfa_summary'] = mfdfa_summary
+
+                    logger.info(f"Aggregated MFDFA for {pop_name}: {len(all_mfdfa_results)} neurons")
+
+            
         logger.info(f"Aggregation complete. Combined {len(combined_responses)} populations with "
                    f"{sum(len(pop['cell_metrics']) for pop in combined_responses.values())} total cells")
         
@@ -1172,7 +1207,7 @@ def process_model_spatiotemporal_responses(
     frequency_bands=[(1, 4), (4, 8), (8, 15), (15, 30), (30, 100)],
     comm=None,
     root=0,
-    aggregate_results=True,  # Whether to aggregate results to root rank
+    aggregate_results=False,  # Whether to aggregate results to root rank
     **kwargs
 ):
     """

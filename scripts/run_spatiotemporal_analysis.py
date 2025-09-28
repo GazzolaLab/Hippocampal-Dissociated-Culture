@@ -3,7 +3,10 @@ from tqdm import tqdm
 from typing import Optional, List
 from mpi4py import MPI
 
-from analyze_spatiotemporal_responses import process_model_spatiotemporal_responses
+from analyze_spatiotemporal_responses import (process_model_spatiotemporal_responses,
+                                              aggregate_processed_responses)
+from mfdfa_analysis import add_mfdfa_to_population_response
+from plot_mfdfa_analysis import create_mfdfa_report
 from plot_spatiotemporal_analysis import (save_all_plots,
                                           plot_feature_activities,
                                           plot_dimensional_receptive_fields,
@@ -27,11 +30,9 @@ def analyze_spatiotemporal_responses(model_output_path,
                                      frequency_bands=[(1, 4), (4, 8), (8, 15), (15, 30), (30, 100)],
                                      output_dir=None,
                                      fig_format='svg',
-                                     analyses=['tuning_curves',
-                                               'sensitivity_analysis',
+                                     analyses=['feature_activities',
                                                'receptive_fields',
-                                               'response_examples',
-                                               'dynamic_responses'],
+                                               'mfdfa_analysis'],
                                      max_gids=None,
                                      max_features=None,
                                      sample_seed=None,
@@ -95,29 +96,42 @@ def analyze_spatiotemporal_responses(model_output_path,
         max_gids=max_gids,
         max_features=max_features,
         sample_seed=sample_seed,
+        aggregate_results=False, # don't aggregate results yet
         comm=comm,
         root=root
     )
 
-    # analyses=['tuning_curves', 'sensitivity_analysis', 'response_examples', 'dynamic_responses']
+    if 'mfdfa_analysis' in analyses:
+        processed_responses = add_mfdfa_to_population_response(
+            population_processed_responses,
+            time_bin_ms=time_bin_ms,
+            analysis_types=['rate', 'isi'],
+            comm=comm,
+            root=root
+        )
 
+    # Aggregate results (with MFDFA extension)
+    final_results = aggregate_processed_responses(processed_responses, comm, root)
+        
     if rank == root:
         
         processed_data = next(iter(population_processed_data.values()))
-        
-        fig1 = plot_feature_activities(
-            processed_data['feature_activities'],
-            processed_data['input_metadata']['feature_data'],
-            processed_data['input_metadata']['dimensions']
-        )
-        
-        fig2 = plot_dimensional_receptive_fields(processed_data, max_neurons=20)
-        
-        fig3 = plot_receptive_field_heatmaps(
-            processed_data, 
-            'temporal_frequency', 
-            'spatial_position'
-        )
+
+        if 'feature_activity' in analyses:
+            fig1 = plot_feature_activities(
+                processed_data['feature_activities'],
+                processed_data['input_metadata']['feature_data'],
+                processed_data['input_metadata']['dimensions']
+            )
+
+        if 'receptive_fields' in analyses:
+            fig2 = plot_dimensional_receptive_fields(processed_data, max_neurons=20)
+            
+            fig3 = plot_receptive_field_heatmaps(
+                processed_data, 
+                'temporal_frequency', 
+                'spatial_position'
+            )
         
         saved_files = save_all_plots(
             processed_data,
@@ -126,6 +140,14 @@ def analyze_spatiotemporal_responses(model_output_path,
             dpi=300
         )
 
+        if 'mfdfa_analysis' in analyses:
+            create_mfdfa_report(
+                processed_data, 
+                output_dir='./figures/spatiotemporal_analysis',
+                analysis_types=['rate', 'isi'],
+                max_individual_plots=9
+            )
+        
     comm.barrier()
 
 

@@ -7,6 +7,13 @@ Intracellular:
       v:
         swc types:
           - soma
+  Network slice:
+    fraction: 0.05
+    dt: 0.1
+    section quantity:
+      v:
+        swc types:
+          - soma
   Network clamp default:
     dt: 0.025
     section quantity:

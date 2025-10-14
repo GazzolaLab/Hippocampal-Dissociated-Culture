@@ -9,12 +9,34 @@ import h5py
 import numpy as np
 import logging
 from typing import Tuple, List, Optional, Dict, Any
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+
+plt.style.use('ggplot')
+SMALL_SIZE = 14
+MEDIUM_SIZE = 16
+BIGGER_SIZE = 18
+
+plt.rc('font', size=SMALL_SIZE)
+plt.rc('axes', titlesize=MEDIUM_SIZE)
+plt.rc('axes', labelsize=MEDIUM_SIZE)
+plt.rc('xtick', labelsize=SMALL_SIZE)
+plt.rc('ytick', labelsize=SMALL_SIZE)
+plt.rc('legend', fontsize=SMALL_SIZE)
+plt.rc('figure', titlesize=MEDIUM_SIZE)
+
+mpl.rcParams['font.family'] = 'sans-serif'
 
 
 def create_multidimensional_signal(duration: float, 
                                    sample_rate: float,
                                    n_dimensions: int = 64,
-                                   signal_type: str = "oscillatory") -> Tuple[np.ndarray, np.ndarray]:
+                                   modulation_hz: Optional[float] = None,
+                                   signal_type: str = "oscillatory",
+                                   random_seed: Optional[int] = None,
+                                   plot: bool = False,
+                                   plot_kwargs: Dict[str, Any] = {}) -> Tuple[np.ndarray, np.ndarray]:
+    
     """
     Create a test multidimensional signal for interneuron stimulation.
     
@@ -22,7 +44,10 @@ def create_multidimensional_signal(duration: float,
         duration: Signal duration in seconds
         sample_rate: Sample rate in Hz
         n_dimensions: Number of signal dimensions
+        modulation_hz: Optional global amplitude modulation 
         signal_type: Type of signal ('oscillatory', 'noise', 'mixed')
+        random_seed: Optional random seed for reproducibility
+        plot: Whether to plot the signal
     
     Returns:
         Tuple of (time_vector, signal_array)
@@ -30,6 +55,7 @@ def create_multidimensional_signal(duration: float,
     n_samples = int(duration * sample_rate)
     t = np.linspace(0, duration, n_samples, endpoint=False)
     signal = np.zeros((n_samples, n_dimensions))
+    local_random = np.random.RandomState(random_seed)
     
     if signal_type == "oscillatory":
         # Create oscillatory signals with different frequencies in each dimension
@@ -37,14 +63,15 @@ def create_multidimensional_signal(duration: float,
         
         for dim in range(n_dimensions):
             freq = base_frequencies[dim]
-            amplitude = 0.5 + 0.5 * np.random.rand()  # Random amplitude 0.5-1.0
-            phase = 2 * np.pi * np.random.rand()  # Random phase
+            amplitude = 0.5 + 0.5 * local_random.rand()  # Random amplitude 0.5-1.0
+            phase = 2 * np.pi * local_random.rand()  # Random phase
             signal[:, dim] = amplitude * np.sin(2 * np.pi * freq * t + phase)
         
         # Add a global modulation envelope
-        envelope_freq = 0.5  # 0.5 Hz modulation
-        envelope = 0.3 + 0.7 * (0.5 + 0.5 * np.sin(2 * np.pi * envelope_freq * t))
-        signal = signal * envelope.reshape(-1, 1)
+        if modulation_hz is not None:
+            envelope_freq = modulation_hz  # 0.5 Hz modulation
+            envelope = 0.3 + 0.7 * (0.5 + 0.5 * np.sin(2 * np.pi * envelope_freq * t))
+            signal = signal * envelope.reshape(-1, 1)
         
     elif signal_type == "noise":
         # Colored noise with different temporal correlations
@@ -63,23 +90,38 @@ def create_multidimensional_signal(duration: float,
             signal[:, dim] = colored_noise
     
     elif signal_type == "mixed":
-        # Mix of oscillatory and noise components
-        # First half dimensions: oscillatory
-        for dim in range(n_dimensions // 2):
+        # Mixed oscillatory * noise components
+        for dim in range(n_dimensions):
+            # Oscillatory component
             freq = 5 + 10 * dim  # 5, 15, 25, ... Hz
-            amplitude = 0.7
-            signal[:, dim] = amplitude * np.sin(2 * np.pi * freq * t)
+            amplitude = 1.0
+            phase = 2 * np.pi * local_random.rand()  # Random phase
+            signal[:, dim] = amplitude * np.sin(2 * np.pi * freq * t + phase)
+            # Noise component
+            signal[:, dim] = signal[:, dim] * local_random.randn(n_samples)
         
-        # Second half dimensions: noise
-        for dim in range(n_dimensions // 2, n_dimensions):
-            signal[:, dim] = 0.5 * np.random.randn(n_samples)
-        
-        # Add global amplitude modulation
-        modulation = 0.5 + 0.5 * np.sin(2 * np.pi * 1.0 * t)  # 1 Hz modulation
-        signal = signal * modulation.reshape(-1, 1)
+        # Add global amplitude modulation if specified
+        if modulation_hz:
+            modulation = 0.5 + 0.5 * np.sin(2 * np.pi * modulation_hz * t)
+            signal = signal * modulation.reshape(-1, 1)
     
     else:
         raise ValueError(f"Unknown signal_type: {signal_type}")
+
+    if plot:
+        figsize = plot_kwargs.get("figsize", (10,8))
+        fig, ax = plt.subplots(figsize=figsize)
+
+        im = ax.imshow(
+            signal.T,
+            origin='lower',
+            aspect='auto'
+        )
+        plt.colorbar(im, ax=ax)
+        ax.set_xlabel("Time")
+        ax.set_ylabel("Signal")
+        plt.tight_layout()
+        plt.show()
     
     return t, signal
 

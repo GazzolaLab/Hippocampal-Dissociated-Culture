@@ -43,6 +43,7 @@ ibrun run-network \
     --spike-input-namespace="Spatiotemporal Feature Spikes drc_features_20250912" \
     --spike-input-attr="Spike Train" \
     --coordinates-namespace="Generated Coordinates" \
+    --recording-profile="Network slice" \
     --microcircuit-inputs \
     --mechanisms-path mechanisms/build \
     --io-size=10 \

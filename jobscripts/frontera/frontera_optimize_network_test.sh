@@ -61,8 +61,8 @@ ibrun -n 559 \
     --arena_id=A \
     --stimulus_id=Diag \
     --coordinates_namespace="Generated Coordinates" \
-    --spike_input_path="${DATA_PREFIX}/Slice/CA1_Slice_100_dynamical_response_features.h5" \
-    --spike_input_namespace="Spatiotemporal Feature Spikes drc_features_20240514" \
+    --spike_input_path="${DATA_PREFIX}/Slice/CA1_Slice_100_dynamical_response_features_20250912.h5" \
+    --spike_input_namespaces='Spatiotemporal Feature Spikes drc_features_20250912' \
     --spike_input_attr='Spike Train' \
     --max_walltime_hours=2 \
     --io_size=1

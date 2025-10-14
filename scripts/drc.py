@@ -3,6 +3,7 @@ import sys
 import numpy as np
 from typing import Dict, List, Optional, Tuple, Any, Callable, Union
 from collections import defaultdict
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 from scipy import signal as sp_signal
 from dataclasses import dataclass, field
@@ -25,6 +26,92 @@ logging.basicConfig(level=logging.INFO)
 
 logger = logging.getLogger('drc')
 
+plt.style.use('ggplot')
+SMALL_SIZE = 14
+MEDIUM_SIZE = 16
+BIGGER_SIZE = 18
+
+plt.rc('font', size=SMALL_SIZE)
+plt.rc('axes', titlesize=MEDIUM_SIZE)
+plt.rc('axes', labelsize=MEDIUM_SIZE)
+plt.rc('xtick', labelsize=SMALL_SIZE)
+plt.rc('ytick', labelsize=SMALL_SIZE)
+plt.rc('legend', fontsize=SMALL_SIZE)
+plt.rc('figure', titlesize=MEDIUM_SIZE)
+
+mpl.rcParams['font.family'] = 'sans-serif'
+
+# HDF5 helper procedures
+
+def h5_create_dataset(group, name, data):
+    """
+    Create a new dataset in the HDF5 group.
+    
+    Parameters:
+    -----------
+    group : h5py.Group
+        HDF5 group to create dataset in
+    name : str
+        Name of the dataset
+    data : np.ndarray
+        Data to write
+    """
+    if data.ndim == 1:
+        maxshape = (None,)
+        chunks = (min(1000, max(1, len(data))),)
+    else:
+        maxshape = (None,) + data.shape[1:]
+        chunks = (min(1000, max(1, data.shape[0])),) + data.shape[1:]
+    
+    dataset = group.create_dataset(
+        name, 
+        data=data,
+        maxshape=maxshape,
+        chunks=chunks,
+        compression='gzip',
+        compression_opts=9
+    )
+    
+    logger.debug(f"Created dataset {name} with shape {data.shape}")
+
+def h5_append_to_dataset(group, name, new_data):
+    """
+    Append data to an existing dataset.
+    
+    Parameters:
+    -----------
+    group : h5py.Group
+        HDF5 group containing the dataset
+    name : str
+        Name of the dataset
+    new_data : np.ndarray
+        New data to append
+    """
+    dataset = group[name]
+    
+    # Check compatibility
+    if new_data.ndim != dataset.ndim:
+        raise ValueError(f"Cannot append data with {new_data.ndim} dimensions to dataset with {dataset.ndim} dimensions")
+    
+    if new_data.ndim > 1 and new_data.shape[1:] != dataset.shape[1:]:
+        raise ValueError(f"Cannot append data with shape {new_data.shape[1:]} to dataset with shape {dataset.shape[1:]}")
+    
+    # Check dtype compatibility
+    if new_data.dtype != dataset.dtype:
+        logger.warning(f"Data type mismatch for {name}: dataset={dataset.dtype}, new_data={new_data.dtype}")
+        # Try to convert new data to match dataset dtype
+        try:
+            new_data = new_data.astype(dataset.dtype)
+        except Exception as e:
+            raise ValueError(f"Cannot convert new data type to match dataset: {e}")
+    
+    # Resize dataset and append
+    old_size = dataset.shape[0]
+    new_size = old_size + new_data.shape[0]
+    dataset.resize((new_size,) + dataset.shape[1:])
+    dataset[old_size:new_size] = new_data
+    
+    logger.debug(f"Appended {new_data.shape[0]} rows to dataset {name}, new size: {new_size}")
 
 # Define custom reduction operations that concatenate lists and merge dictionaries
 def list_concat(a, b, datatype):
@@ -312,6 +399,7 @@ class DynamicalResponsePopulation(InputFeaturePopulation):
         density_function: Optional[Callable] = None,
         encoding_distribution: Optional[Dict[str, Any]] = None,
         random_seed: Optional[int] = None,
+        comm: Optional[Any] = None
     ):
         """
         Initialize a DynamicalResponsePopulation.
@@ -340,6 +428,8 @@ class DynamicalResponsePopulation(InputFeaturePopulation):
             Parameters for feature encoding
         random_seed : int, optional
             Random seed for reproducibility
+        comm : mpi4py.Comm, optional
+            Optional MPI communicator (used for export metadata operation)
         """
         super().__init__(
             name=name,
@@ -357,7 +447,7 @@ class DynamicalResponsePopulation(InputFeaturePopulation):
         self.response_metrics = defaultdict(dict)
         
         self.dimension_stats = {dim["name"]: {} for dim in dimensions}
-
+        self.comm = comm
 
     def generate_features(
         self,
@@ -663,7 +753,7 @@ class DynamicalResponsePopulation(InputFeaturePopulation):
                 # Higher priority dimensions get smaller jitter for more uniform coverage
                 jitter_scale = 0.45
                 if i in high_priority_dims:
-                    jitter_scale = 0.35
+                    jitter_scale = 0.25
 
                 jitter[:, i] = self.local_random.uniform(-jitter_scale, jitter_scale, 
                                                         len(positions_grid)) * cell_size
@@ -965,6 +1055,7 @@ class DynamicalResponsePopulation(InputFeaturePopulation):
         --------
         matplotlib.figure.Figure
             Generated figure
+
         """
         if metrics_dict is None:
             metrics_dict = self.response_metrics
@@ -1450,9 +1541,174 @@ class DynamicalResponsePopulation(InputFeaturePopulation):
         plt.tight_layout()
         return fig
 
+
+    def _prepare_feature_data_export(self, feature_data):
+        """
+        Prepare feature data for HDF5 storage by handling None values and ensuring consistent types.
+
+        Parameters:
+        -----------
+        feature_data : Dict
+            Dictionary containing feature data with potential None values
+
+        Returns:
+        --------
+        Dict
+            Processed feature data suitable for HDF5 storage
+        """
+        processed_data = {}
+
+        for key, values in feature_data.items():
+            if key == 'gids':
+                # GIDs should be integers
+                processed_data[key] = np.array(values, dtype=np.int64)
+            elif key == 'positions':
+                # Positions are arrays of coordinates
+                if values:
+                    max_dims = max(len(pos) for pos in values)
+                    position_array = np.full((len(values), max_dims), np.nan, dtype=np.float64)
+                    for i, pos in enumerate(values):
+                        position_array[i, :len(pos)] = pos
+                    processed_data[key] = position_array
+                else:
+                    processed_data[key] = np.array([]).reshape(0, 0)
+            else:
+                # Handle metadata and metric values
+                if not values:  # Empty list
+                    processed_data[key] = np.array([])
+                    continue
+
+                # Check if all values are numeric or can be converted to numeric
+                try:
+                    # Try to convert to float, replacing None with NaN
+                    numeric_values = []
+                    for val in values:
+                        if val is None:
+                            numeric_values.append(np.nan)
+                        else:
+                            numeric_values.append(float(val))
+                    processed_data[key] = np.array(numeric_values, dtype=np.float64)
+                except (ValueError, TypeError):
+                    # Handle as string data
+                    string_values = []
+                    for val in values:
+                        if val is None:
+                            string_values.append('')
+                        else:
+                            string_values.append(str(val))
+                    # Use variable-length string dtype for HDF5 compatibility
+                    processed_data[key] = np.array(string_values, dtype=h5py.special_dtype(vlen=str))
+
+        return processed_data
+
+    def _export_feature_data(self, output_path, signal_id, feature_data):
+        """
+        Write feature data to the Signals namespace in HDF5 file, with append support.
+
+        Parameters:
+        -----------
+        output_path : str
+            Path to the HDF5 file
+        signal_id : str
+            Signal identifier
+        feature_data : Dict
+            Dictionary containing feature data to write
+        """
+        if not feature_data['gids']:  # No features to write
+            logger.info("No feature data to write")
+            return
+
+        processed_data = self._prepare_feature_data_export(feature_data)
+
+        with h5py.File(output_path, 'a') as f:  # Open in append mode
+            # Create Signals group if it doesn't exist
+            if 'Signals' not in f:
+                signals_group = f.create_group('Signals')
+            else:
+                signals_group = f['Signals']
+
+            # Create signal-specific group if it doesn't exist
+            if signal_id not in signals_group:
+                signal_group = signals_group.create_group(signal_id)
+            else:
+                signal_group = signals_group[signal_id]
+
+            # Create feature_data group if it doesn't exist
+            if 'feature_data' not in signal_group:
+                feature_group = signal_group.create_group('feature_data')
+            else:
+                feature_group = signal_group['feature_data']
+
+            # Write or append each dataset
+            for key, data in processed_data.items():
+                if len(data) == 0:  # Skip empty datasets
+                    continue
+
+                if key in feature_group:
+                    # Dataset exists, append data
+                    h5_append_to_dataset(feature_group, key, data)
+                else:
+                    # Create new dataset
+                    h5_create_dataset(feature_group, key, data)
+
+            # Store metadata about dimensions (but not population name)
+            if 'dimensions_info' not in feature_group.attrs:
+                dimensions_info = []
+                for dim in self.dimensions:
+                    dim_info = {
+                        'name': dim['name'],
+                        'range': dim['range'],
+                        'scale': dim.get('scale', 'linear'),
+                        'units': dim.get('units', '')
+                    }
+                    dimensions_info.append(str(dim_info))
+                feature_group.attrs['dimensions_info'] = dimensions_info
+
+            logger.info(f"Feature data written to {output_path}/Signals/{signal_id}/feature_data")
+
+    def _merge_feature_data_dicts(self, local_dict, all_dicts):
+        """
+        Merge feature data dictionaries from all ranks by concatenating lists.
+
+        Parameters:
+        -----------
+        local_dict : Dict
+            Local feature data dictionary
+        all_dicts : List[Dict]
+            List of feature data dictionaries from all ranks
+
+        Returns:
+        --------
+        Dict
+            Merged feature data dictionary
+        """
+        merged_dict = {}
+
+        # Get all possible keys from all dictionaries
+        all_keys = set()
+        for d in all_dicts:
+            if d is not None:
+                all_keys.update(d.keys())
+
+        # Merge each key by concatenating lists
+        for key in all_keys:
+            merged_values = []
+            for d in all_dicts:
+                if d is not None and key in d:
+                    # Extend the list with values from this rank
+                    if isinstance(d[key], list):
+                        merged_values.extend(d[key])
+                    else:
+                        # Handle case where value is not a list
+                        merged_values.append(d[key])
+            merged_dict[key] = merged_values
+
+        return merged_dict
+
+
     def export_metadata(self, signal_id, stimulus, output_path=None):
         """
-        Export feature population data.
+        Export feature population data, collecting from all MPI ranks.
 
         Parameters:
         -----------
@@ -1465,19 +1721,22 @@ class DynamicalResponsePopulation(InputFeaturePopulation):
 
         Returns:
         --------
-        Dict
-            Exported data dictionary
+        None
         """
-        export_data = {
+        comm = self.comm
+        rank = comm.rank
+
+        # Collect local export data
+        local_export_data = {
             'name': self.name,
-            'n_features': self.n_features,
+            'n_features': len(self.features),  # Local number of features
             'dimensions': self.dimensions,
             'dimension_stats': self.dimension_stats,
             'population_metrics': getattr(self, 'population_metrics', {}),
         }
 
-        # Create flat dictionaries for features
-        feature_data = {
+        # Create flat dictionaries for local features
+        local_feature_data = {
             'gids': [],
             'positions': []
         }
@@ -1485,7 +1744,7 @@ class DynamicalResponsePopulation(InputFeaturePopulation):
         metadata_keys = set()
         metric_keys = set()
 
-        # Collect all metadata and metric keys
+        # Collect all metadata and metric keys from local features
         for gid, feature in self.features.items():
             metadata_dict = feature.kwargs.get('metadata', {})
             for key in metadata_dict:
@@ -1495,41 +1754,100 @@ class DynamicalResponsePopulation(InputFeaturePopulation):
                 for key in self.response_metrics[gid]:
                     metric_keys.add(key)
 
+        # Initialize lists for all possible keys
         for key in metadata_keys:
-            feature_data[f'metadata_{key}'] = []
+            local_feature_data[f'metadata_{key}'] = []
 
         for key in metric_keys:
-            feature_data[f'metric_{key}'] = []
+            local_feature_data[f'metric_{key}'] = []
 
-        # Collect data in column format
+        # Collect local data in column format
         for gid, feature in self.features.items():
-            feature_data['gids'].append(gid)
-            feature_data['positions'].append(feature.position)
+            local_feature_data['gids'].append(gid)
+            local_feature_data['positions'].append(feature.position)
 
             metadata_dict = feature.kwargs.get('metadata', {})
             for key in metadata_keys:
                 if key in metadata_dict:
-                    feature_data[f'metadata_{key}'].append(metadata_dict[key])
+                    local_feature_data[f'metadata_{key}'].append(metadata_dict[key])
                 else:
-                    feature_data[f'metadata_{key}'].append(None)  # Use None for missing values
+                    local_feature_data[f'metadata_{key}'].append(None)
 
             if hasattr(self, 'response_metrics') and gid in self.response_metrics:
                 metrics_dict = self.response_metrics[gid]
                 for key in metric_keys:
                     if key in metrics_dict:
-                        feature_data[f'metric_{key}'].append(metrics_dict[key])
+                        local_feature_data[f'metric_{key}'].append(metrics_dict[key])
                     else:
-                        feature_data[f'metric_{key}'].append(None)
+                        local_feature_data[f'metric_{key}'].append(None)
             else:
                 for key in metric_keys:
-                    feature_data[f'metric_{key}'].append(None)
+                    local_feature_data[f'metric_{key}'].append(None)
 
-        # Save to h5 file if requested
-        if output_path:
-            write_signal(output_path, self.name, self.dimensions,
-                         signal_id, stimulus)
+        # Gather all feature data dictionaries to rank 0
+        all_feature_data_dicts = comm.gather(local_feature_data, root=0)
 
-        return export_data
+        # Gather dimension stats from all ranks and merge
+        all_dimension_stats = comm.gather(self.dimension_stats, root=0)
+
+        # Gather population metrics from all ranks and merge
+        local_pop_metrics = getattr(self, 'population_metrics', {})
+        all_pop_metrics = comm.gather(local_pop_metrics, root=0)
+
+        # Merge data on rank 0
+        global_feature_data = None
+        global_export_data = None
+
+        if rank == 0:
+            # Merge feature data from all ranks
+            global_feature_data = self._merge_feature_data_dicts(
+                local_feature_data, all_feature_data_dicts
+            )
+
+            # Merge dimension stats - combine statistics across ranks
+            global_dimension_stats = {}
+            for dim_name in self.dimensions:
+                dim_name_key = dim_name["name"]
+                global_dimension_stats[dim_name_key] = {"values": []}
+
+                all_values = []
+                for rank_stats in all_dimension_stats:
+                    if rank_stats and dim_name_key in rank_stats:
+                        if "values" in rank_stats[dim_name_key]:
+                            all_values.extend(rank_stats[dim_name_key]["values"])
+
+                if all_values:
+                    values_array = np.array(all_values)
+                    global_dimension_stats[dim_name_key] = {
+                        "values": all_values,
+                        "min": values_array.min(),
+                        "max": values_array.max(),
+                        "mean": values_array.mean(),
+                        "std": values_array.std()
+                    }
+
+            # Merge population metrics - for now just use the last non-empty one
+            # Could implement more sophisticated merging if needed
+            global_pop_metrics = {}
+            for rank_metrics in all_pop_metrics:
+                if rank_metrics:
+                    global_pop_metrics.update(rank_metrics)
+
+            # Calculate total number of features across all ranks
+            total_n_features = len(global_feature_data.get('gids', []))
+
+            # Save to h5 file if requested
+            if output_path and global_feature_data:
+                write_signal(output_path, self.name, self.dimensions,
+                             signal_id, stimulus)
+                self._export_feature_data(output_path, signal_id, global_feature_data)
+
+            logger.info(f"Exported metadata for {total_n_features} features across {comm.size} ranks")
+
+        comm.barrier()
+
+    
+            
 
     
 def create_dynamical_response_system(
@@ -1632,6 +1950,7 @@ def create_dynamical_response_system(
             "rate_scaling_factor": 0.5,  # Higher frequencies = higher rates
         },
         random_seed=random_seed,
+        comm=comm
     )
 
     # Determine population id
@@ -1665,13 +1984,16 @@ def run_dynamical_response_characterization(signal_id = None,
                                             config_prefix = "./config",
                                             config = "Dynamical_Response_Features.yaml",
                                             population_name = "dynamical_response_features",
+                                            sampling_strategy = "stratified",
                                             register_population = True,
                                             input_signal_file = None,  # Set to path of HDF5 file to read signal from
                                             stimulus_duration = 1,
                                             n_features = 150,
                                             sample_dt_ms=1.0,
+                                            modulation_hz = None,
                                             random_seed = 42,
                                             n_dimensions = 64,
+                                            generate_spikes = True,
                                             dry_run = False,
                                             plot = True,
                                             output_path = None,
@@ -1709,6 +2031,7 @@ def run_dynamical_response_characterization(signal_id = None,
         sample_dt_ms=sample_dt_ms,
         random_seed=random_seed,
         register_population=register_population,
+        sampling_strategy=sampling_strategy
     )
 
     n_features = population.n_features
@@ -1803,8 +2126,11 @@ def run_dynamical_response_characterization(signal_id = None,
             t, stimulus = create_multidimensional_signal(
                 duration=stimulus_duration,
                 sample_rate=sample_rate_hz, 
+                modulation_hz=modulation_hz,
                 n_dimensions=n_dimensions,
-                signal_type="mixed"
+                signal_type="mixed",
+                random_seed=random_seed,
+                plot=plot
             )
 
             signal_metadata = {
@@ -1825,25 +2151,23 @@ def run_dynamical_response_characterization(signal_id = None,
         output_path = os.path.join(output_prefix, output_path)
 
     output_spikes_namespace = f"Spatiotemporal Feature Spikes"
-    generate_input_spike_trains(
-        env,
-        population,
-        signal=stimulus,
-        signal_id=signal_id,
-        coords_path=None,
-        output_path=output_path,
-        output_spikes_namespace=output_spikes_namespace,
-        output_spike_train_attr_name="Spike Train",
-        dry_run=dry_run,
-        **io_kwargs,
-    )
+    if generate_spikes:
+        generate_input_spike_trains(
+            env,
+            population,
+            signal=stimulus,
+            signal_id=signal_id,
+            coords_path=None,
+            output_path=output_path,
+            output_spikes_namespace=output_spikes_namespace,
+            output_spike_train_attr_name="Spike Train",
+            dry_run=dry_run,
+            **io_kwargs,
+        )
 
-    export_data = None
-    if rank == 0:
-        export_data = population.export_metadata(signal_id,
-                                                 stimulus,
-                                                 output_path=output_path if not dry_run else None)
-    comm.barrier()
+    export_data = population.export_metadata(signal_id,
+                                             stimulus,
+                                             output_path=output_path if not dry_run else None)
     
 
     analysis_results = None
@@ -1860,9 +2184,10 @@ def run_dynamical_response_characterization(signal_id = None,
         
     if plot and (rank == 0):
 
-        fig1 = population.plot_responses(response_metrics)
-        fig1a = population.plot_responses(response_metrics, plot_dimensions=['temporal_frequency',
-                                                                            'spatial_position'])
+        
+        fig1a = population.plot_responses(response_metrics)
+        fig1b = population.plot_responses(response_metrics, plot_dimensions=['temporal_frequency',
+                                                                             'spatial_position'])
     
         # Show population tuning curves
         fig2 = population.plot_population_tuning('temporal_frequency', metric='mean_activation',
@@ -1908,17 +2233,20 @@ def run_dynamical_response_characterization(signal_id = None,
 
 if __name__ == "__main__":
     
-    run_dynamical_response_characterization(signal_id = "drc_features_20240912",
+    run_dynamical_response_characterization(signal_id = "drc_features_20240920",
                                             config = "Network_Clamp_PYR_gid_48041.yaml",
                                             stimulus_duration = 10,
-                                            dataset_prefix = "datasets",
-                                            output_path = "dynamical_response_spike_trains_n150_10s_3.h5",
+                                            dataset_prefix = "/home/igr/Data/projects/Hippocampal-Dissociated-Culture/datasets/",
+                                            output_path = "dynamical_response_spike_trains_n150_10s_5.h5",
                                             output_prefix = "datasets",
                                             population_name = "DRC",
+                                            register_population = True,
+                                            sampling_strategy = "random",
+                                            modulation_hz = 5,
                                             n_features = 150,
                                             io_kwargs={'io_size': 1,
                                                        'write_size': 10,
                                                        },
-                                            dry_run = True)
+                                            dry_run = False)
 
 

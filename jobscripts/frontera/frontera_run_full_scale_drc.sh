@@ -3,7 +3,7 @@
 #SBATCH -o ./results/MiV_run_full_scale_drc.%j.o
 #SBATCH --nodes=160
 #SBATCH --ntasks-per-node=56
-#SBATCH -t 8:00:00
+#SBATCH -t 4:00:00
 #SBATCH -p normal      # Queue (partition) name
 #SBATCH --mail-user=ivan.g.raikov@gmail.com
 #SBATCH --mail-type=END
@@ -39,8 +39,8 @@ ibrun run-network \
     --template-paths="templates" \
     --dataset-prefix="${DATA_PREFIX}" \
     --results-path=${results_path} \
-    --spike-input-path="${DATA_PREFIX}/Full_Scale/Full_Scale_CA1_dynamical_response_spike_trains_20250912.h5" \
-    --spike-input-namespace="Spatiotemporal Feature Spikes drc_features_20250912" \
+    --spike-input-path="${DATA_PREFIX}/Full_Scale/Full_Scale_CA1_dynamical_response_spike_trains_20250922.h5" \
+    --spike-input-namespace="Spatiotemporal Feature Spikes drc_features_20250922" \
     --spike-input-attr="Spike Train" \
     --coordinates-namespace="Generated Coordinates" \
     --io-size=80 \
@@ -48,7 +48,7 @@ ibrun run-network \
     --v-init=-75 \
     --results-write-time=60 \
     --stimulus-onset=0.0 \
-    --max-walltime-hours=8 \
+    --max-walltime-hours=4 \
     --mechanisms-path mechanisms/build \
     --use-coreneuron \
     --dt 0.025 \

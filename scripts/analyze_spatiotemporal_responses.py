@@ -1151,8 +1151,6 @@ def aggregate_processed_responses(processed_responses, comm=None, root=0):
                 for cell_data in pop_data['cell_metrics'].values()
             )
 
-            print(f"population {pop_name}: pop_data.keys: {list(pop_data.keys())} "
-                  f"pop_data.cell_metrics_keys: {list(next(iter(pop_data['cell_metrics'].values())).keys())} ")
             if has_mfdfa:
                 # Collect all MFDFA results for recomputation of population summary
                 all_mfdfa_results = {}

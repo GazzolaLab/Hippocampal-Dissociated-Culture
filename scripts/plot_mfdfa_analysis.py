@@ -240,7 +240,6 @@ def plot_population_mfdfa_summary(
         }
 
     for pop_name, pop_data in processed_responses.items():
-        print(f"pop_data.keys() = {list(pop_data.keys())}")
         if 'mfdfa_summary' in pop_data['population_metrics']:
             summary = pop_data['population_metrics']['mfdfa_summary']
             

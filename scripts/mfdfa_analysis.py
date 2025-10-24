@@ -1,5 +1,6 @@
 import numpy as np
 from scipy import signal as sp_signal
+from mpi4py import MPI
 from typing import Dict, List, Tuple, Optional, Callable
 import warnings
 from functools import partial

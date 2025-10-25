@@ -50,6 +50,13 @@ INTERNEURON_FI_PARAMS = {
         'max_rate': 90.0,
         'circuit_type': 'feedback',
         'description': 'Cholecystokinin-positive interneurons'
+    },
+    'NPY': {
+        'threshold': 0.15,
+        'slope': 30.0,
+        'max_rate': 40.0,
+        'circuit_type': 'feedforward',
+        'description': 'Neuropeptide Y expressing interneurons'
     }
 }
 

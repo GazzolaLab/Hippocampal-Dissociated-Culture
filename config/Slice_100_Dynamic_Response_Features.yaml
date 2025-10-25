@@ -6,8 +6,8 @@ Global Parameters: !include Global.yaml
 Geometry: !include Geometry.yaml
 Random Seeds: !include Random.yaml
 Connection Generator: !include Full_Scale_Connections_20250912.yaml
-Cell Data: CA1_Slice_100_dynamical_response_features_20250912.h5
-Connection Data: CA1_Slice_100_dynamical_response_features_20250912.h5
+Cell Data: CA1_Slice_100_dynamical_response_features_20250922.h5
+Connection Data: CA1_Slice_100_dynamical_response_features_20250922.h5
 Recording: !include Recording.yaml
 Stimulus: !include Input_Configuration.yaml
 Analysis: !include Analysis_Configuration.yaml
@@ -74,15 +74,15 @@ Cell Types:
   EC:
     template: VecStim
     spike train:
-      namespace: Spatiotemporal Feature Spikes drc_features_20250912
+      namespace: Spatiotemporal Feature Spikes drc_features_20250922
       attribute: Spike Train
   CA2:
     template: VecStim
     spike train:
-      namespace: Spatiotemporal Feature Spikes drc_features_20250912
+      namespace: Spatiotemporal Feature Spikes drc_features_20250922
       attribute: Spike Train
   CA3:
     template: VecStim
     spike train:
-      namespace: Spatiotemporal Feature Spikes drc_features_20250912
+      namespace: Spatiotemporal Feature Spikes drc_features_20250922
       attribute: Spike Train

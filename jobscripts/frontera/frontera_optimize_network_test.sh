@@ -34,6 +34,7 @@ export PATH=${CDTools}/bin:$PATH
 results_path=$SCRATCH/MiV/results/optimize_network_$SLURM_JOB_ID
 #results_path=$SCRATCH/MiV/results/optimize_network_7006295
 #results_file=dmosopt.optimize_network_20250326_2224.h5
+
 export results_path
 export results_file
 
@@ -61,8 +62,8 @@ ibrun -n 559 \
     --arena_id=A \
     --stimulus_id=Diag \
     --coordinates_namespace="Generated Coordinates" \
-    --spike_input_path="${DATA_PREFIX}/Slice/CA1_Slice_100_dynamical_response_features_20250912.h5" \
-    --spike_input_namespaces='Spatiotemporal Feature Spikes drc_features_20250912' \
+    --spike_input_path="${DATA_PREFIX}/Slice/CA1_Slice_100_dynamical_response_features_20250922.h5" \
+    --spike_input_namespaces='Spatiotemporal Feature Spikes drc_features_20250922' \
     --spike_input_attr='Spike Train' \
     --max_walltime_hours=2 \
     --io_size=1

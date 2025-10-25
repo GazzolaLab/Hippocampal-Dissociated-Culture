@@ -69,7 +69,7 @@ f-I Parameters:
         threshold: 0.18
         slope: 30.0
         max_rate: 100.0
-        circuit_type: feedforward,
+        circuit_type: feedforward
         description: Vasoactive intestinal peptide interneurons
     CCK:
         threshold: 0.12
@@ -77,6 +77,12 @@ f-I Parameters:
         max_rate: 90.0
         circuit_type: feedback
         description: Cholecystokinin-positive interneurons
+    NPY:
+        threshold: 0.15
+        slope: 30.0
+        max_rate: 40.0
+        circuit_type: feedforward
+        description: Neuropeptide Y expressing interneurons
 
 
 # Opsin:

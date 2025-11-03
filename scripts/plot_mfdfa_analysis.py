@@ -5,7 +5,7 @@ from matplotlib.patches import Rectangle
 from matplotlib.gridspec import GridSpec
 import seaborn as sns
 from typing import Dict, List, Optional, Tuple, Union
-from scipy import stats
+from scipy.stats import pearsonr
 import warnings
 
 # Set matplotlib to use LaTeX rendering as specified in user preferences
@@ -238,7 +238,7 @@ def plot_population_mfdfa_summary(
             'n_spikes': [],
             'firing_rates': []
         }
-    
+
     for pop_name, pop_data in processed_responses.items():
         if 'mfdfa_summary' in pop_data['population_metrics']:
             summary = pop_data['population_metrics']['mfdfa_summary']
@@ -311,7 +311,7 @@ def plot_population_mfdfa_summary(
                 
                 # Add correlation if enough points
                 if np.sum(valid_mask) > 10:
-                    corr, p_val = stats.pearsonr(rates[valid_mask], hurst_vals[valid_mask])
+                    corr, p_val = pearsonr(rates[valid_mask], hurst_vals[valid_mask])
                     ax3.text(0.05, 0.95 - i*0.1, f'{analysis_type}: r={corr:.3f}, p={p_val:.3f}',
                            transform=ax3.transAxes, fontsize=10)
     
@@ -474,7 +474,7 @@ def plot_mfdfa_correlation_analysis(
                              cmap='viridis')
         plt.colorbar(scatter, ax=ax1, label='Firing Rate (Hz)')
         
-        corr, p_val = stats.pearsonr(data['cv_isi'][valid_mask], data['hurst'][valid_mask])
+        corr, p_val = pearsonr(data['cv_isi'][valid_mask], data['hurst'][valid_mask])
         ax1.set_title(f'Hurst vs CV ISI\nr = {corr:.3f}, p = {p_val:.3f}')
         
         if abs(corr) > correlation_threshold:
@@ -496,7 +496,7 @@ def plot_mfdfa_correlation_analysis(
                              cmap='plasma')
         plt.colorbar(scatter, ax=ax2, label='N Spikes')
         
-        corr, p_val = stats.pearsonr(data['burst_index'][valid_mask], data['multifractality'][valid_mask])
+        corr, p_val = pearsonr(data['burst_index'][valid_mask], data['multifractality'][valid_mask])
         ax2.set_title(f'Multifractality vs Burst Index\nr = {corr:.3f}, p = {p_val:.3f}')
         
         if abs(corr) > correlation_threshold:
@@ -519,8 +519,8 @@ def plot_mfdfa_correlation_analysis(
                    alpha=0.6, s=30, label='Multifractality', color='red')
         
         # Correlations
-        corr_h, p_h = stats.pearsonr(data['max_correlation'][valid_mask], data['hurst'][valid_mask])
-        corr_m, p_m = stats.pearsonr(data['max_correlation'][valid_mask], data['multifractality'][valid_mask])
+        corr_h, p_h = pearsonr(data['max_correlation'][valid_mask], data['hurst'][valid_mask])
+        corr_m, p_m = pearsonr(data['max_correlation'][valid_mask], data['multifractality'][valid_mask])
         
         ax3.set_title(f'MFDFA vs Stimulus Correlation\nH: r={corr_h:.3f}, Δh: r={corr_m:.3f}')
     
@@ -536,7 +536,7 @@ def plot_mfdfa_correlation_analysis(
                          cmap='viridis')
     plt.colorbar(scatter, ax=ax4, label='Firing Rate (Hz)')
     
-    corr, p_val = stats.pearsonr(data['hurst'], data['multifractality'])
+    corr, p_val = pearsonr(data['hurst'], data['multifractality'])
     ax4.set_title(f'Hurst vs Multifractality\nr = {corr:.3f}, p = {p_val:.3f}')
     ax4.set_xlabel('Hurst Exponent')
     ax4.set_ylabel('Multifractality Strength')

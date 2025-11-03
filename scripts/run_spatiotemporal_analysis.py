@@ -101,9 +101,10 @@ def analyze_spatiotemporal_responses(model_output_path,
         root=root
     )
 
+    processed_responses = population_processed_data
     if 'mfdfa_analysis' in analyses:
         processed_responses = add_mfdfa_to_population_response(
-            population_processed_responses,
+            processed_responses,
             time_bin_ms=time_bin_ms,
             analysis_types=['rate', 'isi'],
             comm=comm,
@@ -115,7 +116,7 @@ def analyze_spatiotemporal_responses(model_output_path,
         
     if rank == root:
         
-        processed_data = next(iter(population_processed_data.values()))
+        processed_data = next(iter(final_results.values()))
 
         if 'feature_activity' in analyses:
             fig1 = plot_feature_activities(
@@ -142,7 +143,7 @@ def analyze_spatiotemporal_responses(model_output_path,
 
         if 'mfdfa_analysis' in analyses:
             create_mfdfa_report(
-                processed_data, 
+                final_results,
                 output_dir='./figures/spatiotemporal_analysis',
                 analysis_types=['rate', 'isi'],
                 max_individual_plots=9
@@ -163,10 +164,11 @@ if __name__ == "__main__":
         fig_format="png",
         correlation_method='mutual_info',
         time_bin_ms=50.0,
+        #use_signal_dimensions=True,  # Compute correlations between input signal and output firing rates
         use_binned_features=True,
 #        analyses=['tuning_curves'],
 #        analyses=['tuning_curves', 'sensitivity_analysis', 'response_examples', 'dynamic_responses'],
-        max_gids=50000,
+        max_gids=10000,
         max_features=10000,
         sample_seed=67
     )

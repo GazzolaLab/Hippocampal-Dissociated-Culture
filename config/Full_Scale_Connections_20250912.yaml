@@ -1069,10 +1069,10 @@ Synapses:
           tau_rise: 0.6
           tau_decay: 2.5
           e: 0
-          g_unit: 0.0005
+          g_unit: 0.0002
           weight: 1.0
         NMDA:
-          g_unit: 0.0005
+          g_unit: 0.0001
           weight: 1.0
     BS:   
       type: inhibitory

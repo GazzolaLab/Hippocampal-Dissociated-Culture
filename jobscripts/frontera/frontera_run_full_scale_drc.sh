@@ -10,11 +10,13 @@
 #SBATCH --mail-type=BEGIN
 #
 
-module load phdf5
+module load phdf5/1.14.6
+
+source $SCRATCH/venv/bin/activate
 
 export NEURONROOT=$SCRATCH/bin/nrnpython3_intel19
-export PYTHONPATH=$HOME/model:$NEURONROOT/lib/python:$SCRATCH/site-packages/python3.10:$PYTHONPATH
-export PATH=$NEURONROOT/bin:$SCRATCH/site-packages/python3.10/bin:$PATH
+export PYTHONPATH=$HOME/model:$NEURONROOT/lib/python:$PYTHONPATH
+export PATH=$NEURONROOT/bin:$PATH
 
 export I_MPI_ADJUST_SCATTER=2
 export I_MPI_ADJUST_SCATTERV=2
@@ -24,7 +26,7 @@ export I_MPI_ADJUST_ALLTOALL=4
 export I_MPI_ADJUST_ALLTOALLV=2
 export I_MPI_ADJUST_ALLREDUCE=6
 
-export DATA_PREFIX=$SCRATCH/striped2/MiV
+export DATA_PREFIX=$SCRATCH/data/MiV
 export CONFIG_PREFIX="config"
 export MAIN_CONFIG="Full_Scale_Dynamic_Response_Features.yaml"
 

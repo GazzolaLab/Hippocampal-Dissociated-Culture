@@ -12,9 +12,11 @@
 
 module load phdf5
 
+export KEOPS_CACHE_FOLDER="/tmp/keops"
+
 export NEURONROOT=$SCRATCH/bin/nrnpython3_intel19
-export PYTHONPATH=$HOME/model:$NEURONROOT/lib/python:$SCRATCH/site-packages/python3.10:$PYTHONPATH
-export PATH=$NEURONROOT/bin:$SCRATCH/site-packages/python3.10/bin:$PATH
+export PYTHONPATH=$HOME/model:$NEURONROOT/lib/python:/tmp/site-packages/python3.10:$PYTHONPATH
+export PATH=$NEURONROOT/bin:/tmp/site-packages/python3.10/bin:$PATH
 
 export I_MPI_ADJUST_SCATTER=2
 export I_MPI_ADJUST_SCATTERV=2
@@ -32,8 +34,8 @@ export CDTools=/home1/apps/CDTools/2.0
 export PATH=${CDTools}/bin:$PATH
 
 results_path=$SCRATCH/MiV/results/optimize_network_$SLURM_JOB_ID
-#results_path=$SCRATCH/MiV/results/optimize_network_7006295
-#results_file=dmosopt.optimize_network_20250326_2224.h5
+results_path=$SCRATCH/MiV/results/optimize_network_7402624
+results_file=dmosopt.optimize_network_20251026_1214.h5
 
 export results_path
 export results_file
@@ -41,19 +43,23 @@ export results_file
 mkdir -p ${results_path}
 
 distribute.bash ${SCRATCH}/striped2/MiV/MiV_optimize_network
+distribute.bash ${WORK}/site-packages
+
 #   --optimize-file-name=$results_file 
  
 ibrun -n 559 \
     optimize-network \
     --config-path=./config/optimize_network_test.yaml \
     --optimize-file-dir=$results_path \
+    --optimize-file-name=$results_file \
     --nprocs-per-worker=279 \
     --n-epochs=2 \
-    --population-size=400 \
+    --population-size=200 \
     --num-generations=200 \
-    --n-initial=10 \
+    --n-initial=5 \
     --initial-method=slh \
     --surrogate-method=megp \
+    --optimizer-method=age \
     --mechanisms_path=mechanisms/build \
     --no_cleanup \
     --dataset_prefix="$DATA_PREFIX" \

@@ -11,6 +11,7 @@ Connection Data: CA1_Full_Scale.h5
 Recording: !include Recording.yaml
 Stimulus: !include Input_Configuration.yaml
 Analysis: !include Analysis_Configuration.yaml
+Network Clamp:  !include Network_Clamp.yaml
 Cell Types:
   PYR:
     template class: templates.PyramidalCellBilash.PyramidalCell

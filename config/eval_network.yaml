@@ -1,0 +1,67 @@
+param_config_name: "Weight all"
+temporal_resolution: 50. # ms
+objective_names:
+  - PYR firing rate
+  - PYR mean fraction active per time bin
+  - PYR std fraction active per time bin
+  - CCKBC firing rate
+  - CCKBC mean fraction active per time bin
+  - CCKBC std fraction active per time bin
+  - BS firing rate
+  - BS mean fraction active per time bin
+  - BS std fraction active per time bin
+  - AAC firing rate
+  - AAC mean fraction active per time bin
+  - AAC std fraction active per time bin
+  - PVBC firing rate
+  - PVBC mean fraction active per time bin
+  - PVBC std fraction active per time bin
+  - IS1 firing rate
+  - IS1 mean fraction active per time bin
+  - IS1 std fraction active per time bin
+  - IS2 firing rate
+  - IS2 mean fraction active per time bin
+  - IS2 std fraction active per time bin
+  - IS3 firing rate
+  - IS3 mean fraction active per time bin
+  - IS3 std fraction active per time bin
+  - OLM firing rate
+  - OLM mean fraction active per time bin
+  - OLM std fraction active per time bin
+  - IVY firing rate
+  - IVY mean fraction active per time bin
+  - IVY std fraction active per time bin
+  - NGFC firing rate
+  - NGFC mean fraction active per time bin
+  - NGFC std fraction active per time bin
+  - SCA firing rate
+  - SCA mean fraction active per time bin
+  - SCA std fraction active per time bin
+target_populations: 
+  - PYR
+  - CCKBC
+  - BS
+  - AAC
+  - PVBC
+  - IS1
+  - IS2
+  - IS3
+  - OLM
+  - IVY
+  - NGFC
+  - SCA
+kwargs:
+  config: Full_Scale_Dynamic_Response_Features.yaml
+  spike_input_namespaces: ["Spatiotemporal Feature Spikes drc_features_20250922", "Interneuron Spikes drc_features_20250922"]
+  tstop: 9750.
+  checkpoint_interval: 0.
+  v_init: -75.
+  dt: 0.025
+  cleanup: False
+  verbose: True
+  cache_queries: True
+  output_results: True
+  use_coreneuron: True
+  use_cell_attr_gen: True
+  cell_attr_gen_cache_size: 4
+  microcircuit_inputs: False

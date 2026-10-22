@@ -1,0 +1,9 @@
+Synapse Mechanisms:
+  AMPA: LinExp2Syn 
+  NMDA: LinExp2SynNMDA
+  GABA_A: LinExp2Syn
+  GABA_B: LinExp2Syn
+Synapse Parameter Rules: !include Synapse_Parameter_Rules.yaml
+Axon Extent: !include Axon_Extent.yaml
+Connection Velocity: !include Connection_Velocity.yaml
+Synapses: !include Slice_Tuned_Joint_Surrogate_Oct_2026.yaml

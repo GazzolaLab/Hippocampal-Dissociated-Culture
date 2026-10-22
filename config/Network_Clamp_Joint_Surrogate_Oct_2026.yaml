@@ -1,0 +1,581 @@
+Synaptic Optimization:
+  PYR:
+    Parameter ranges:
+      Weight all:
+        CA2:
+          basal:
+            AMPA:
+              weight: [0.01, 1.0]
+            NMDA:
+              weight: [0.01, 1.0]
+        CA3:
+          ? !!python/tuple [apical, basal]
+          : AMPA:
+              weight: [0.01, 1.0]
+            NMDA:
+              weight: [0.01, 1.0]
+        PYR:
+          ? !!python/tuple [soma, basal]
+          : AMPA:
+              weight: [0.01, 1.0]
+            NMDA:
+              weight: [0.01, 1.0]
+        EC:
+          apical:
+            AMPA:
+              weight: [0.01, 1.0]
+            NMDA:
+              weight: [0.01, 1.0]
+        AAC:
+          ais:
+            GABA_A:
+              weight: [5.38e-05, 5.38]
+        PVBC:
+          ? !!python/tuple [apical, basal, soma]
+          : GABA_A:
+              weight: [5.38e-05, 5.38]
+        CCKBC:
+          ? !!python/tuple [apical, basal, soma]
+          : GABA_A:
+              weight: [5.38e-05, 5.38]
+        BS:
+          ? !!python/tuple [apical, basal]
+          : GABA_A:
+              weight: [5.38e-05, 5.38]
+        IVY:
+          ? !!python/tuple [apical, basal]
+          : GABA_A:
+              weight: [5.38e-05, 5.38]
+        SCA:
+          ? !!python/tuple [apical, basal]
+          : GABA_A:
+              weight: [5.38e-05, 5.38]
+        NGFC:
+          apical:
+            GABA_A:
+              weight: [5.38e-05, 5.38]
+            GABA_B:
+              weight: [5.38e-05, 5.38]
+        OLM:
+          ? !!python/tuple [apical, basal]
+          : GABA_A:
+              weight: [5.38e-05, 5.38]
+    Targets: {firing rate: 1.02}
+  CCKBC:
+    Parameter ranges:
+      Weight all:
+        EC:
+          apical:
+            AMPA:
+              weight: [0.0001, 0.3]
+        CA2:
+          ? !!python/tuple [apical, basal]
+          : AMPA:
+              weight: [0.0001, 0.3]
+        CA3:
+          ? !!python/tuple [apical, basal, soma]
+          : AMPA:
+              weight: [0.0001, 0.3]
+        PYR:
+          basal:
+            AMPA:
+              weight: [0.0001, 0.3]
+        PVBC:
+          ? !!python/tuple [soma, basal]
+          : GABA_A:
+              weight: [6.02e-06, 0.236]
+        CCKBC:
+          ? !!python/tuple [soma, basal]
+          : GABA_A:
+              weight: [6.02e-06, 0.236]
+        BS:
+          apical:
+            GABA_A:
+              weight: [6.02e-06, 0.236]
+        IVY:
+          apical:
+            GABA_A:
+              weight: [6.02e-06, 0.236]
+        SCA:
+          apical:
+            GABA_A:
+              weight: [6.02e-06, 0.236]
+        NGFC:
+          apical:
+            GABA_A:
+              weight: [6.02e-06, 0.236]
+            GABA_B:
+              weight: [6.02e-06, 0.236]
+        OLM:
+          apical:
+            GABA_A:
+              weight: [6.02e-06, 0.236]
+        IS1:
+          ? !!python/tuple [apical, basal]
+          : GABA_A:
+              weight: [6.02e-06, 0.236]
+        IS2:
+          apical:
+            GABA_A:
+              weight: [6.02e-06, 0.236]
+        IS3:
+          basal:
+            GABA_A:
+              weight: [6.02e-06, 0.236]
+    Targets: {firing rate: 9.0}
+  BS:
+    Parameter ranges:
+      Weight all:
+        EC:
+          apical:
+            AMPA:
+              weight: [0.00707, 0.707]
+        CA2:
+          ? !!python/tuple [apical, basal]
+          : AMPA:
+              weight: [0.00707, 0.707]
+        CA3:
+          ? !!python/tuple [apical, basal]
+          : AMPA:
+              weight: [0.00707, 0.707]
+        PYR:
+          ? !!python/tuple [soma, basal]
+          : AMPA:
+              weight: [0.00707, 0.707]
+        PVBC:
+          ? !!python/tuple [soma, basal]
+          : GABA_A:
+              weight: [0.000654, 0.372]
+        CCKBC:
+          ? !!python/tuple [soma, apical]
+          : GABA_A:
+              weight: [0.000654, 0.372]
+        BS:
+          apical:
+            GABA_A:
+              weight: [0.000654, 0.372]
+        IVY:
+          apical:
+            GABA_A:
+              weight: [0.000654, 0.372]
+        SCA:
+          apical:
+            GABA_A:
+              weight: [0.000654, 0.372]
+        OLM:
+          apical:
+            GABA_A:
+              weight: [0.000654, 0.372]
+        NGFC:
+          apical:
+            GABA_A:
+              weight: [0.000654, 0.372]
+            GABA_B:
+              weight: [0.000654, 0.372]
+        IS1:
+          basal:
+            GABA_A:
+              weight: [0.000654, 0.372]
+        IS3:
+          basal:
+            GABA_A:
+              weight: [0.000654, 0.372]
+    Targets: {firing rate: 18.0}
+  AAC:
+    Parameter ranges:
+      Weight all:
+        CA2:
+          ? !!python/tuple [apical, basal]
+          : AMPA:
+              weight: [0.00103, 0.103]
+            NMDA:
+              weight: [0.00103, 0.103]
+        CA3:
+          ? !!python/tuple [apical, basal]
+          : AMPA:
+              weight: [0.00103, 0.103]
+            NMDA:
+              weight: [0.00103, 0.103]
+        EC:
+          apical:
+            AMPA:
+              weight: [0.00103, 0.103]
+            NMDA:
+              weight: [0.00103, 0.103]
+        PYR:
+          ? !!python/tuple [basal, soma]
+          : AMPA:
+              weight: [0.00103, 0.103]
+            NMDA:
+              weight: [0.00103, 0.103]
+        PVBC:
+          ? !!python/tuple [basal, soma]
+          : GABA_A:
+              weight: [0.0132, 1.82]
+        CCKBC:
+          soma:
+            GABA_A:
+              weight: [0.0132, 1.82]
+        BS:
+          apical:
+            GABA_A:
+              weight: [0.0132, 1.82]
+        IVY:
+          apical:
+            GABA_A:
+              weight: [0.0132, 1.82]
+        SCA:
+          apical:
+            GABA_A:
+              weight: [0.0132, 1.82]
+        NGFC:
+          apical:
+            GABA_A:
+              weight: [0.0132, 1.82]
+            GABA_B:
+              weight: [0.0132, 1.82]
+        OLM:
+          apical:
+            GABA_A:
+              weight: [0.0132, 1.82]
+    Targets: {firing rate: 18.0}
+  PVBC:
+    Parameter ranges:
+      Weight all:
+        CA2:
+          ? !!python/tuple [apical, basal]
+          : AMPA:
+              weight: [0.000771, 0.0771]
+            NMDA:
+              weight: [0.000771, 0.0771]
+        CA3:
+          ? !!python/tuple [apical, basal]
+          : AMPA:
+              weight: [0.000771, 0.0771]
+            NMDA:
+              weight: [0.000771, 0.0771]
+        EC:
+          apical:
+            AMPA:
+              weight: [0.000771, 0.0771]
+            NMDA:
+              weight: [0.000771, 0.0771]
+        PYR:
+          ? !!python/tuple [basal, soma]
+          : AMPA:
+              weight: [0.000771, 0.0771]
+            NMDA:
+              weight: [0.000771, 0.0771]
+        PVBC:
+          ? !!python/tuple [basal, soma]
+          : GABA_A:
+              weight: [0.00137, 1.37]
+        CCKBC:
+          soma:
+            GABA_A:
+              weight: [0.00137, 1.37]
+        BS:
+          apical:
+            GABA_A:
+              weight: [0.00137, 1.37]
+        IVY:
+          apical:
+            GABA_A:
+              weight: [0.00137, 1.37]
+        SCA:
+          apical:
+            GABA_A:
+              weight: [0.00137, 1.37]
+        NGFC:
+          apical:
+            GABA_A:
+              weight: [0.00137, 1.37]
+            GABA_B:
+              weight: [0.00137, 1.37]
+        OLM:
+          apical:
+            GABA_A:
+              weight: [0.00137, 1.37]
+    Targets: {firing rate: 18.0}
+  IS1:
+    Parameter ranges:
+      Weight all:
+        CA2:
+          ? !!python/tuple [apical, basal]
+          : AMPA:
+              weight: [0.203, 20.3]
+        CA3:
+          ? !!python/tuple [apical, basal]
+          : AMPA:
+              weight: [0.203, 20.3]
+        PYR:
+          ? !!python/tuple [soma, basal]
+          : AMPA:
+              weight: [0.203, 20.3]
+        PVBC:
+          soma:
+            GABA_A:
+              weight: [0.0598, 90.6]
+        BS:
+          apical:
+            GABA_A:
+              weight: [0.0598, 90.6]
+        IVY:
+          ? !!python/tuple [apical, basal]
+          : GABA_A:
+              weight: [0.0598, 90.6]
+        SCA:
+          ? !!python/tuple [apical, basal]
+          : GABA_A:
+              weight: [0.0598, 90.6]
+        IS1:
+          basal:
+            GABA_A:
+              weight: [0.0598, 90.6]
+        IS2:
+          apical:
+            GABA_A:
+              weight: [0.0598, 90.6]
+    Targets: {firing rate: 17.0}
+  IS2:
+    Parameter ranges:
+      Weight all:
+        EC:
+          apical:
+            AMPA:
+              weight: [0.102, 10.2]
+        CA3:
+          ? !!python/tuple [soma, apical, basal]
+          : AMPA:
+              weight: [0.102, 10.2]
+        NGFC:
+          ? !!python/tuple [apical, basal]
+          : GABA_A:
+              weight: [0.00476, 23.8]
+        SCA:
+          basal:
+            GABA_A:
+              weight: [0.00476, 23.8]
+        IS1:
+          ? !!python/tuple [soma, apical]
+          : GABA_A:
+              weight: [0.00476, 23.8]
+    Targets: {firing rate: 17.0}
+  IS3:
+    Parameter ranges:
+      Weight all:
+        CA2:
+          ? !!python/tuple [soma, apical]
+          : AMPA:
+              weight: [0.0178, 1.78]
+        CA3:
+          ? !!python/tuple [soma, apical, basal]
+          : AMPA:
+              weight: [0.0178, 1.78]
+        EC:
+          apical:
+            AMPA:
+              weight: [0.0178, 1.78]
+        PYR:
+          basal:
+            AMPA:
+              weight: [0.0178, 1.78]
+        PVBC:
+          soma:
+            GABA_A:
+              weight: [0.00148, 25.2]
+        BS:
+          ? !!python/tuple [apical, basal]
+          : GABA_A:
+              weight: [0.00148, 25.2]
+        IVY:
+          ? !!python/tuple [apical, basal]
+          : GABA_A:
+              weight: [0.00148, 25.2]
+        SCA:
+          apical:
+            GABA_A:
+              weight: [0.00148, 25.2]
+        NGFC:
+          apical:
+            GABA_A:
+              weight: [0.00148, 25.2]
+        IS1:
+          apical:
+            GABA_A:
+              weight: [0.00148, 25.2]
+        IS2:
+          apical:
+            GABA_A:
+              weight: [0.00148, 25.2]
+    Targets: {firing rate: 17.0}
+  OLM:
+    Parameter ranges:
+      Weight all:
+        PYR:
+          basal:
+            AMPA:
+              weight: [0.00253, 0.253]
+            NMDA:
+              weight: [0.00253, 0.253]
+        OLM:
+          basal:
+            GABA_A:
+              weight: [0.00024, 7.99]
+        IS3:
+          basal:
+            GABA_A:
+              weight: [0.00024, 7.99]
+    Targets: {firing rate: 13.0}
+  IVY:
+    Parameter ranges:
+      Weight all:
+        CA2:
+          ? !!python/tuple [apical, basal]
+          : AMPA:
+              weight: [0.00338, 0.338]
+            NMDA:
+              weight: [0.00338, 0.338]
+        CA3:
+          ? !!python/tuple [soma, apical, basal]
+          : AMPA:
+              weight: [0.00338, 0.338]
+            NMDA:
+              weight: [0.00338, 0.338]
+        PYR:
+          ? !!python/tuple [apical, basal]
+          : AMPA:
+              weight: [0.00338, 0.338]
+            NMDA:
+              weight: [0.00338, 0.338]
+        PVBC:
+          soma:
+            GABA_A:
+              weight: [0.000676, 3.38]
+        CCKBC:
+          ? !!python/tuple [soma, basal]
+          : GABA_A:
+              weight: [0.000676, 3.38]
+        BS:
+          ? !!python/tuple [apical, basal]
+          : GABA_A:
+              weight: [0.000676, 3.38]
+        IVY:
+          ? !!python/tuple [apical, basal]
+          : GABA_A:
+              weight: [0.000676, 3.38]
+        SCA:
+          ? !!python/tuple [apical, basal]
+          : GABA_A:
+              weight: [0.000676, 3.38]
+        NGFC:
+          apical:
+            GABA_A:
+              weight: [0.000676, 3.38]
+            GABA_B:
+              weight: [0.000676, 3.38]
+        IS1:
+          ? !!python/tuple [apical, basal]
+          : GABA_A:
+              weight: [0.000676, 3.38]
+        IS2:
+          apical:
+            GABA_A:
+              weight: [0.000676, 3.38]
+    Targets: {firing rate: 3.0}
+  NGFC:
+    Parameter ranges:
+      Weight all:
+        EC:
+          ? !!python/tuple [apical, basal]
+          : AMPA:
+              weight: [0.01, 1.0]
+            NMDA:
+              weight: [0.01, 1.0]
+        CA3:
+          basal:
+            AMPA:
+              weight: [0.01, 1.0]
+            NMDA:
+              weight: [0.01, 1.0]
+        BS:
+          basal:
+            GABA_A:
+              weight: [0.0368, 4.09]
+        IVY:
+          basal:
+            GABA_A:
+              weight: [0.0368, 4.09]
+        SCA:
+          basal:
+            GABA_A:
+              weight: [0.0368, 4.09]
+        NGFC:
+          apical:
+            GABA_A:
+              weight: [0.0368, 4.09]
+            GABA_B:
+              weight: [0.0368, 4.09]
+        OLM:
+          apical:
+            GABA_A:
+              weight: [0.0368, 4.09]
+    Targets: {firing rate: 7.4}
+  SCA:
+    Parameter ranges:
+      Weight all:
+        CA2:
+          ? !!python/tuple [apical, basal]
+          : AMPA:
+              weight: [0.209, 20.9]
+        CA3:
+          ? !!python/tuple [apical, basal, soma]
+          : AMPA:
+              weight: [0.209, 20.9]
+        EC:
+          apical:
+            AMPA:
+              weight: [0.209, 20.9]
+        PYR:
+          basal:
+            AMPA:
+              weight: [0.209, 20.9]
+        PVBC:
+          ? !!python/tuple [basal, soma]
+          : GABA_A:
+              weight: [0.00702, 3.46]
+        CCKBC:
+          ? !!python/tuple [soma, basal]
+          : GABA_A:
+              weight: [0.00702, 3.46]
+        BS:
+          apical:
+            GABA_A:
+              weight: [0.00702, 3.46]
+        IVY:
+          apical:
+            GABA_A:
+              weight: [0.00702, 3.46]
+        SCA:
+          apical:
+            GABA_A:
+              weight: [0.00702, 3.46]
+        NGFC:
+          apical:
+            GABA_A:
+              weight: [0.00702, 3.46]
+            GABA_B:
+              weight: [0.00702, 3.46]
+        OLM:
+          apical:
+            GABA_A:
+              weight: [0.00702, 3.46]
+        IS1:
+          ? !!python/tuple [basal, apical]
+          : GABA_A:
+              weight: [0.00702, 3.46]
+        IS2:
+          apical:
+            GABA_A:
+              weight: [0.00702, 3.46]
+    Targets: {firing rate: 9.0}
